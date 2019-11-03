@@ -23,8 +23,10 @@ out 92h, al
 
 ; loading 2nd stage loader and placing it at the address 0x8000
 
-; reading all sectors on the FDD track minus MBR
-push 17
+; side 0, head number 0
+push 0
+; currently 2nd stage loader is less than 4k, reading 8 sectors only
+push 8
 ; MBR is the first sector - skipping it
 push 2
 ; reading from track 0
@@ -41,12 +43,67 @@ mov es, ax
 call read
 
 ; removing arguments from the stack
-add sp, 6
+add sp, 10
+
+; loading system binary
+; side 0, head number 0
+push 1
+; reading 18 sectors on track
+push 18
+; starting from the first sector
+push 1
+; on track 0
+push 0
+; and placing at 36kb
+push 9000h
+
+mov ax, 0
+mov es, ax
+
+call read
+
+; removing arguments from stack
+add sp, 10
+
+; getting drive status
+mov ah, 08h
+; of drive number 0
+mov dl, 0
+int 13h
+
+mov ax, 0b800h
+mov ds, ax
+
+mov bx, 0
+; display
+mov al, byte [es:di+3]
+add al, 40h
+mov byte [ds:bx], al
+
+; cursor at 0, 2
+mov ah, 2
+mov bh, 0
+mov dx, 2
+int 10h
+
+mov ax, 0
+mov ds, ax
+
+; dumping mem
+mov cx, 640
+mov ah, 0eh
+mov bh, 0
+mov si, 9000h
+
+dump:
+lodsb
+;int 10h
+loop dump
 
 ; jumping to second stage loader
 jmp loader_jmp
 
-; read(char* buffer, size_t track_num, size_t start_sector, size_t sector_count)
+; read(char* buffer, size_t track_num, size_t start_sector, size_t sector_count, size_t head_num)
 read:
 ; performing stack frame setup
 push bp
@@ -71,8 +128,10 @@ mov bx, [bp+4]
 mov cl, byte [bp+8]
 ; track number 0 
 mov ch, byte [bp+6]
-; using drive number 0 and side 0
-mov dx, 0
+; using head number parameter
+mov dh, byte [bp+12]
+; using drive number 0
+mov dl, 0
 
 ; performing call to BIOS service
 int 13h

@@ -14,8 +14,8 @@ extern {
 #[no_mangle]
 pub extern fn _start() -> ! {
 	unsafe {
-		(*SCREEN_BUF)[0] = b'@';
-		(*SCREEN_BUF)[1] = 0x07;
+		(*SCREEN_BUF)[160] = b'@';
+		(*SCREEN_BUF)[161] = 0x07;
 	}
 
 	loop {}
