@@ -1,0 +1,11 @@
+starting UOS image using qemu
+
+$ qemu-system-i386 -m 1 -display curses -fda uos.img -no-fd-bootchk -boot order=a
+
+loader.s and loader.c are the second stage loader files which will configure paging and pass control
+the core of the system written in Rust
+
+disassembly of loader code
+
+tail -c ++513 loader.bin > loader.bin.code
+objdump -D -bbinary -mi386 loader.bin
