@@ -65,41 +65,6 @@ call read
 ; removing arguments from stack
 add sp, 10
 
-; getting drive status
-mov ah, 08h
-; of drive number 0
-mov dl, 0
-int 13h
-
-mov ax, 0b800h
-mov ds, ax
-
-mov bx, 0
-; display
-mov al, byte [es:di+3]
-add al, 40h
-mov byte [ds:bx], al
-
-; cursor at 0, 2
-mov ah, 2
-mov bh, 0
-mov dx, 2
-int 10h
-
-mov ax, 0
-mov ds, ax
-
-; dumping mem
-mov cx, 640
-mov ah, 0eh
-mov bh, 0
-mov si, 9000h
-
-dump:
-lodsb
-;int 10h
-loop dump
-
 ; jumping to second stage loader
 jmp loader_jmp
 

@@ -58,20 +58,9 @@ movl $STACK_TOP, %esp
 call init_vm
 
 # enabling paging by setting PG bit
-movl $0x7fffffff, %ecx
-addl $1, %ecx
 movl %cr0, %eax
-orl %ecx, %eax
+orl $0x80000000, %eax
 movl %eax, %cr0
-
-xorl %eax, %eax
-movb 0xa001, %al
-subl $40, %eax
-movb %al, 0xb80a0
-
-movb 0x2001, %al
-subl $40, %eax
-mov %al, 0xb80a2
 
 # jumping to system code
 pushl $0x9220

@@ -14,8 +14,7 @@ extern {
 #[no_mangle]
 pub extern fn _start() -> ! {
 	unsafe {
-		(*SCREEN_BUF)[160] = b'@';
-		(*SCREEN_BUF)[161] = 0x07;
+		(*SCREEN_BUF)[0] = b'@';
 	}
 
 	loop {}
@@ -26,10 +25,3 @@ fn panic(_: &PanicInfo) -> ! {
 	// making some sign that we reached this place
 	loop {}
 }
-
-/*
-unsafe fn get_screen_buf() -> &'static mut [u8; 3840] {
-	let screen_buf_ptr = 0xb8000 as *mut [u8; 3840];
-	&mut *screen_buf_ptr
-}
-*/
