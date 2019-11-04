@@ -22,12 +22,12 @@ void init_vm() {
 	// page table located at 8kb
 	for (size_t i = 0;i < 1024;i++) {
 		uint32_t pt_entry = i << 12;
-		if (i == 2) {
+		if (i == 3) {
 			// identity mapping for all pages except system
-			// data section remapped from 8kb to 40kb
-			pt_entry = 0xa << 12;
-		} else if (i == 0xa) {
-			// remapping 40k to 36k
+			// data section remapped from 12kb to 44kb
+			pt_entry = 0xb << 12;
+		} else if (i == 0xb) {
+			// remapping 44k to 40k
 			pt_entry = (i-1) << 12;
 		}
 		// configuring present and R/W bits

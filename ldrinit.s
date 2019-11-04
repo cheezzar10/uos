@@ -63,7 +63,7 @@ orl $0x80000000, %eax
 movl %eax, %cr0
 
 # jumping to system code
-pushl $0x9220
+pushl $0x9450
 ret
 
 .global set_cr3

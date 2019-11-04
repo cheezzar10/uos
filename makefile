@@ -4,7 +4,7 @@ LDFLAGS := -Tloader.ld
 ARFLAGS := ru
 RANLIB := ranlib
 RUSTC := rustc
-RUSTCFLAGS = --edition=2018 --emit=link -C panic=abort -C link-arg=-nostartfiles -L. --crate-name
+RUSTCFLAGS = --edition=2018 --emit=link -C panic=abort -C link-arg=-nostartfiles -C debuginfo=0 -L. --crate-name
 
 .PHONY: all
 all: uos.img
@@ -23,6 +23,7 @@ loader.bin: loader mbr.com
 .INTERMEDIATE: uos
 uos: main.rs libuos.a
 	$(RUSTC) $(RUSTCFLAGS) $@ $<
+	strip $@
 
 .INTERMEDIATE: libuos.a
 libuos.a: uos.o
