@@ -62,8 +62,11 @@ movl %cr0, %eax
 orl $0x80000000, %eax
 movl %eax, %cr0
 
+# configuring large stack for system code
+movl $0xfffc, %esp
+
 # jumping to system code
-pushl $0x9450
+pushl $0x12e0
 ret
 
 .global set_cr3

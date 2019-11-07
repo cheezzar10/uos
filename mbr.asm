@@ -21,6 +21,8 @@ in al, 92h
 or al, 2
 out 92h, al
 
+mov di, 0
+
 ; loading 2nd stage loader and placing it at the address 0x8000
 
 ; side 0, head number 0
@@ -63,6 +65,19 @@ mov es, ax
 call read
 
 ; removing arguments from stack
+add sp, 10
+
+push 0
+push 18
+push 1
+push 1
+push 0b400h
+
+mov ax, 0
+mov es, ax
+
+call read
+
 add sp, 10
 
 ; jumping to second stage loader
