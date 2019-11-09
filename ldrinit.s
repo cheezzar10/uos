@@ -66,7 +66,7 @@ movl %eax, %cr0
 movl $0xfffc, %esp
 
 # jumping to system code
-pushl $0x12e0
+pushl $0x1640
 ret
 
 .global set_cr3

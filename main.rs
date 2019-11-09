@@ -18,6 +18,8 @@ pub extern fn _start() -> ! {
 	let mut scrn_buf = ScreenBuf { pos: 0 };
 
 	unsafe {
+		scrn_buf.clear();
+
 		(*SCREEN_BUF)[2] = b'$';
 		if let Ok(()) = write!(&mut scrn_buf, "stack ptr: {:p}", get_sp()) {}
 	}
@@ -35,6 +37,17 @@ impl ScreenBuf {
 			(*SCREEN_BUF)[self.pos*2] = b;
 			self.pos += 1;
 		}
+	}
+
+	unsafe fn clear(&mut self) {
+		for (i, b) in (*SCREEN_BUF).iter_mut().enumerate() {
+			*b = if (i & 0x1) == 1 {
+				0x7
+			} else {
+				0x20
+			}
+		}
+		self.pos = 0;
 	}
 }
 

@@ -3,19 +3,6 @@
 
 [section .text]
 
-; clearing the screen using scroll up function 0x6
-
-; scroll up (06) entire screen (00)
-mov ax, 0600h
-; setting normal text attribute (white text on black screen)
-mov bh, 07h
-; starting from row (0) column (0)
-mov cx, 0h
-; to row (24) column (79)
-mov dx, 184fh
-; calling BIOS video service
-int 10h
-
 ; opening A20 line to make all RAM accessible (disable 1MB wraparound)
 in al, 92h
 or al, 2
@@ -72,6 +59,19 @@ push 18
 push 1
 push 1
 push 0b400h
+
+mov ax, 0
+mov es, ax
+
+call read
+
+add sp, 10
+
+push 1
+push 7
+push 1
+push 1
+push 0d800h
 
 mov ax, 0
 mov es, ax
