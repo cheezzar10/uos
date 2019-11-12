@@ -1,6 +1,9 @@
+bootldr_dir = boot
+sys_dir = sys
+
 ASFLAGS = --32
 CFLAGS = -m32 -Wall -std=c99 -O0 -fno-builtin -nostdlib
-LDFLAGS := -Tloader.ld
+LDFLAGS := -T$(bootldr_dir)/loader.ld
 ARFLAGS := ru
 RANLIB := ranlib
 RUSTC := rustc
@@ -20,6 +23,9 @@ uos.img: loader.bin uos
 loader.bin: loader mbr.com
 	objcopy -Obinary $< $@
 
+vpath %.rs $(sys_dir)
+vpath %.s $(sys_dir)
+
 .INTERMEDIATE: uos
 uos: main.rs libuos.a
 	$(RUSTC) $(RUSTCFLAGS) $@ $<
@@ -32,6 +38,10 @@ libuos.a: uos.o
 
 .INTERMEDIATE: uos.o
 uos.o: uos.s
+
+vpath %.asm $(bootldr_dir)
+vpath %.s $(bootldr_dir)
+vpath %.c $(bootldr_dir)
 
 .INTERMEDIATE: loader
 loader: ldrinit.o loader.o
