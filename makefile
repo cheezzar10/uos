@@ -24,6 +24,7 @@ loader.bin: loader mbr.com
 	objcopy -Obinary $< $@
 
 vpath %.rs $(sys_dir)
+vpath %.c $(sys_dir)
 vpath %.s $(sys_dir)
 
 .INTERMEDIATE: uos
@@ -32,12 +33,15 @@ uos: main.rs libuos.a
 	strip $@
 
 .INTERMEDIATE: libuos.a
-libuos.a: uos.o
+libuos.a: arch.o uos.o
 	$(AR) $(ARFLAGS) $@ $?
 	$(RANLIB) $@
 
 .INTERMEDIATE: uos.o
-uos.o: uos.s
+uos.o: uos.c
+
+.INTERMEDIATE: arch.o
+arch.o: arch.s
 
 vpath %.asm $(bootldr_dir)
 vpath %.s $(bootldr_dir)
@@ -59,4 +63,4 @@ loader.o: loader.c
 
 .PHONY: clean
 clean:
-	rm -f *.img *.a uos
+	$(RM) -f *.img *.a

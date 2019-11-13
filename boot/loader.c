@@ -32,9 +32,13 @@ void init_vm() {
 		case 0x2:
 		case 0x3:
 		case 0x4:
-		case 0x5:
 			// remapping system binary pages to it' location in RAM
 			pt_entry = (sys_phys_page+i) << 12;
+			break;
+		case 0x5:
+		case 0x6:
+			// remapping system binary pages to it' location in RAM
+			pt_entry = (sys_phys_page+i-1) << 12;
 			break;
 		default:
 			// identity mapping by default
