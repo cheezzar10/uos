@@ -54,8 +54,14 @@ movw %ax, %fs
 movl $STACK_TOP, %esp
 
 # calling VM initialization function before 
-# transferring control to system
+
+# passing physical address of system binary to VM init
+# for correct ELF header parsing
+pushl $0x9000
 call init_vm
+
+# saving returned entry point address
+movl %eax, %edx
 
 # enabling paging by setting PG bit
 movl %cr0, %eax
@@ -65,8 +71,8 @@ movl %eax, %cr0
 # configuring large stack for system code
 movl $0xfffc, %esp
 
-# jumping to system code
-pushl $0x1640
+# jumping to system code using entry point address
+pushl %edx
 ret
 
 .global set_cr3

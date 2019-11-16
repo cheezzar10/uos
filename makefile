@@ -61,6 +61,9 @@ ldrinit.o: ldrinit.s
 .INTERMEDIATE: loader.o
 loader.o: loader.c
 
+.PHONY: rebuild
+rebuild: clean all
+
 .PHONY: clean
 clean:
 	$(RM) -f *.img *.a
