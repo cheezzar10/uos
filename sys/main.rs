@@ -10,28 +10,34 @@ extern {
 	// (mutable pointer can't be shared between threads safely)
 	static SCREEN_BUF: *mut [u8; 3840];
 
-	fn get_sp() -> *const usize;
+	fn get_sp() -> *const i32;
 }
 
+static mut SCREEN: ScreenWriter = ScreenWriter { pos: 0 };
+
 #[no_mangle]
-pub extern fn _start() -> ! {
-	let mut scrn_buf = ScreenBuf { pos: 0 };
-
-	unsafe {
-		scrn_buf.clear();
-
-		(*SCREEN_BUF)[2] = b'$';
-		if let Ok(()) = write!(&mut scrn_buf, "stack ptr: {:p}", get_sp()) {}
+pub unsafe extern fn _start(intr_vec_num: i32) {
+	if intr_vec_num == -1 {
+		init();
+	} else {
+		// TODO interrupt handling dispatch will be here
 	}
 
 	loop {}
 }
 
-struct ScreenBuf {
+unsafe fn init() {
+	SCREEN.clear();
+
+	if let Ok(()) = write!(&mut SCREEN, "stack @{:p}\n", get_sp()) {}
+}
+
+// TODO make this object thread safe
+struct ScreenWriter {
 	pos: usize
 }
 
-impl ScreenBuf {
+impl ScreenWriter {
 	unsafe fn print(&mut self, s: &str) {
 		for b in s.bytes() {
 			(*SCREEN_BUF)[self.pos*2] = b;
@@ -51,7 +57,7 @@ impl ScreenBuf {
 	}
 }
 
-impl Write for ScreenBuf {
+impl Write for ScreenWriter {
 	fn write_str(&mut self, s: &str) -> Result {
 		unsafe {
 			self.print(s);
