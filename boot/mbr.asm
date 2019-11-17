@@ -10,75 +10,49 @@ out 92h, al
 
 mov di, 0
 
-; loading 2nd stage loader and placing it at the address 0x8000
+%macro read_sectors 5
 
-; side 0, head number 0
-push 0
-; currently 2nd stage loader is less than 4k, reading 8 sectors only
-push 8
-; MBR is the first sector - skipping it
-push 2
-; reading from track 0
-push 0
-; loading directly to 2nd stage loader location in memory
-push 8000h
-
-; actual load buffer location is ES:<buf addr>
-; initializing ES to zero
-
-mov ax, 0
-mov es, ax
+; head number
+push %5
+; how many sectors to read
+push %4
+; MBR is the first sector - skipping 
+; start sector
+push %3
+; track number
+push %2
+; read buffer address ( location is ES:<buf addr> )
+push %1
 
 call read
 
 ; removing arguments from the stack
 add sp, 10
 
-; loading system binary
-; side 0, head number 0
-push 1
-; reading 18 sectors on track
-push 18
-; starting from the first sector
-push 1
-; on track 0
-push 0
-; and placing at 36kb
-push 9000h
+%endmacro
 
 mov ax, 0
 mov es, ax
 
-call read
-
-; removing arguments from stack
-add sp, 10
-
-push 0
-push 18
-push 1
-push 1
-push 0b400h
+; loading 2nd stage loader and placing it at the address 0x8000
+; read(char* buffer, size_t track_num, size_t start_sector, size_t sector_count, size_t head_num)
+read_sectors 8000h, 0, 2, 8, 0
 
 mov ax, 0
 mov es, ax
 
-call read
-
-add sp, 10
-
-push 1
-push 7
-push 1
-push 1
-push 0d800h
+; reading system binary image sectors
+read_sectors 9000h, 0, 1, 18, 1
 
 mov ax, 0
 mov es, ax
 
-call read
+read_sectors 0b400h, 1, 1, 18, 0
 
-add sp, 10
+mov ax, 0
+mov es, ax
+
+read_sectors 0d800h, 1, 1, 18, 1
 
 ; jumping to second stage loader
 jmp loader_jmp

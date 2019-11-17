@@ -134,7 +134,6 @@ void* init_vm(struct ElfHeader* elf_hdr) {
 }
 
 static void init_sys_vm_map(const struct ElfSecHeader sec_hdr[], size_t sec_hdr_num, uint32_t* pg_tbl, uint32_t sys_bin_pg_offset) {
-	char hex_buf[11] = "0x00000000";
 	for (size_t i = 0;i < sec_hdr_num;i++) {
 		if (sec_hdr[i].sh_addr == NULL) {
 			// skipping null sections
@@ -163,15 +162,6 @@ static void init_sys_vm_map(const struct ElfSecHeader sec_hdr[], size_t sec_hdr_
 
 			pg_tbl_entry = (sys_bin_pg_offset + sec_vm_pg_offset + pg_idx) << 12;
 			pg_tbl[pg_idx] = pg_tbl_entry | (PG_TBL_ENTRY_PRESENT_BIT | PG_TBL_ENTRY_RW_BIT | PG_TBL_ENTRY_MAPPED_BIT);
-
-			print("page: ");
-			int2hex(pg_idx, &hex_buf[2]);
-			print(hex_buf);
-
-			print(" -> ");
-			int2hex(pg_tbl_entry, &hex_buf[2]);
-			print(hex_buf);
-			print("\n");
 		}
 	}
 }
