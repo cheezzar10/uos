@@ -11,17 +11,17 @@ extern {
 	static SCREEN_BUF: *mut [u8; 3840];
 
 	fn get_sp() -> *const i32;
+
+	fn register_interrupt_handler(vec_num: usize, handler: extern fn());
 }
 
 static mut SCREEN: ScreenWriter = ScreenWriter { pos: 0 };
 
+const DIVIDE_ERROR_INTR_VEC_NUM: usize = 0;
+
 #[no_mangle]
-pub unsafe extern fn _start(intr_vec_num: i32) {
-	if intr_vec_num == -1 {
-		init();
-	} else {
-		// TODO interrupt handling dispatch will be here
-	}
+pub unsafe extern fn _start() {
+	init();
 
 	loop {}
 }
@@ -29,7 +29,15 @@ pub unsafe extern fn _start(intr_vec_num: i32) {
 unsafe fn init() {
 	SCREEN.clear();
 
-	if let Ok(()) = write!(&mut SCREEN, "stack @{:p}\n", get_sp()) {}
+	write!(&mut SCREEN, "stack @{:p}\n", get_sp()).unwrap();
+
+	register_interrupt_handler(DIVIDE_ERROR_INTR_VEC_NUM, divide_error);
+}
+
+extern fn divide_error() {
+	unsafe {
+		write!(&mut SCREEN, "divide error").unwrap();
+	}
 }
 
 // TODO make this object thread safe
@@ -40,8 +48,13 @@ struct ScreenWriter {
 impl ScreenWriter {
 	unsafe fn print(&mut self, s: &str) {
 		for b in s.bytes() {
-			(*SCREEN_BUF)[self.pos*2] = b;
-			self.pos += 1;
+			if b == b'\n' {
+				let next_line_offset = 80 - (self.pos % 80);
+				self.pos += next_line_offset;
+			} else {
+				(*SCREEN_BUF)[self.pos*2] = b;
+				self.pos += 1;
+			}
 		}
 	}
 

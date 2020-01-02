@@ -70,11 +70,7 @@ movl %eax, %cr0
 
 # configuring large stack for system code
 movl $0xfffc, %esp
-# passing -1 to entry point signifing the fact that it's not a call from ISR
-movl $0xffffffff, (%esp)
 
-# pushing twice keeping return address in the right place on the stack
-pushl %edx
 # jumping to system code using entry point address
 pushl %edx
 ret
