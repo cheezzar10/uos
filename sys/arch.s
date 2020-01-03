@@ -9,7 +9,7 @@
 # interrupt vector definitions start
 .align 8
 
-idt:
+idt_start:
 
 # 0. divide error fault
 .short isr0
@@ -57,6 +57,14 @@ idt:
 .short 0x0
 .endr
 
+idt_end:
+
+idt_limit = idt_end - idt_start - 1
+
+idt_info:
+.short idt_limit
+.int idt_start
+
 .global SCREEN_BUF
 SCREEN_BUF:
 .int 0xb8000
@@ -67,6 +75,30 @@ intr_handlers:
 .endr
 
 .section .text
+
+.macro create_stack_frame, bytes_for_locals=0
+
+pushl %ebp
+movl %esp, %ebp
+
+subl $\bytes_for_locals, %esp
+
+pushl %ebx
+pushl %esi
+pushl %edi
+
+.endm
+
+.macro destroy_stack_frame
+
+popl %edi
+popl %esi
+popl %ebx
+
+movl %ebp, %esp
+popl %ebp
+
+.endm
 
 .macro ISR vecnum
 isr\vecnum:
@@ -148,6 +180,38 @@ movl 4(%esp), %edx
 movl 8(%esp), %eax
 
 movl %eax, intr_handlers(, %edx, 4)
+
+ret
+
+.global write_byte_to_port
+write_byte_to_port:
+
+create_stack_frame
+
+# port number parameter
+movl 12(%ebp), %edx
+
+# byte to write stored as double word
+movl 8(%ebp), %eax
+
+# writing byte to specified I/O port
+outb %al, %dx
+
+destroy_stack_frame
+
+ret
+
+.global load_idt
+load_idt:
+
+lidt idt_info
+
+ret
+
+.global interrupts_enable
+interrupts_enable:
+
+sti
 
 ret
 
