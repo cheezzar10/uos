@@ -13,11 +13,14 @@ extern {
 	fn get_sp() -> *const i32;
 
 	fn register_interrupt_handler(vec_num: usize, handler: extern fn());
+
+	fn register_interrupt_handler_with_err_code(vec_num: usize, handler: extern fn(err_code: usize));
 }
 
 static mut SCREEN: ScreenWriter = ScreenWriter { pos: 0 };
 
 const DIVIDE_ERROR_INTR_VEC_NUM: usize = 0;
+const GENERAL_PROTECTION_ERR_VEC_NUM: usize = 13;
 
 #[no_mangle]
 pub unsafe extern fn _start() {
@@ -32,11 +35,21 @@ unsafe fn init() {
 	write!(&mut SCREEN, "stack @{:p}\n", get_sp()).unwrap();
 
 	register_interrupt_handler(DIVIDE_ERROR_INTR_VEC_NUM, divide_error);
+
+	register_interrupt_handler_with_err_code(GENERAL_PROTECTION_ERR_VEC_NUM, general_protection_error);
 }
 
 extern fn divide_error() {
 	unsafe {
 		write!(&mut SCREEN, "divide error").unwrap();
+	}
+}
+
+extern fn general_protection_error(err_code: usize) {
+	unsafe {
+		write!(&mut SCREEN, "general protection error: {:x}\n", err_code).unwrap();
+
+		loop {}
 	}
 }
 

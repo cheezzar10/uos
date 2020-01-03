@@ -62,7 +62,7 @@ SCREEN_BUF:
 .int 0xb8000
 
 intr_handlers:
-.rept 32
+.rept 48
 .int nop_intr_handler
 .endr
 
@@ -73,6 +73,8 @@ isr\vecnum:
 
 # saving registers
 pushl %eax
+pushl %ecx
+pushl %edx
 
 # interrupt handler table index
 movl $\vecnum, %eax
@@ -80,7 +82,40 @@ movl $\vecnum, %eax
 call *intr_handlers(, %eax, 4)
 
 # restoring registers
+popl %edx
+popl %ecx
 popl %eax
+
+iret
+.endm
+
+# interrupt service routine for faults with error code
+.macro ISRE vecnum
+isr\vecnum:
+
+# saving registers
+pushl %eax
+pushl %ecx
+pushl %edx
+
+# placing error code copy on the top of the stack
+pushl 12(%esp)
+
+# interrupt handler table index
+movl $\vecnum, %eax
+# interrupt handler call
+call *intr_handlers(, %eax, 4)
+
+# removing error code copy from the stack
+addl $4, %esp
+
+# restoring registers
+popl %edx
+popl %ecx
+popl %eax
+
+# removing error code from the stack
+addl $4, %esp
 
 iret
 .endm
@@ -93,6 +128,19 @@ ret
 
 .global register_interrupt_handler
 register_interrupt_handler:
+
+# interrupt vector number
+movl 4(%esp), %edx
+# pointer to interrupt handler function
+movl 8(%esp), %eax
+
+movl %eax, intr_handlers(, %edx, 4)
+
+ret
+
+# above function copy for HLL type safety
+.global register_interrupt_handler_with_err_code
+register_interrupt_handler_with_err_code:
 
 # interrupt vector number
 movl 4(%esp), %edx
@@ -117,13 +165,13 @@ ISR 4
 ISR 5
 ISR 6
 ISR 7
-ISR 8
+ISRE 8
 ISR 9
-ISR 10
-ISR 11
-ISR 12
-ISR 13
-ISR 14
+ISRE 10
+ISRE 11
+ISRE 12
+ISRE 13
+ISRE 14
 ISR 15
 ISR 16
 ISR 17
