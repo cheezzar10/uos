@@ -18,6 +18,8 @@ extern {
 
 	fn write_byte_to_port(byte: u32, port_num: u32);
 
+	fn read_byte_from_port(port_num: u32) -> u32;
+
 	fn load_idt();
 
 	fn interrupts_enable();
@@ -27,13 +29,19 @@ static mut SCREEN: ScreenWriter = ScreenWriter { pos: 0 };
 
 const DIVIDE_ERROR_INTR_VEC_NUM: usize = 0;
 const GENERAL_PROTECTION_ERR_VEC_NUM: usize = 13;
+
 const TIMER_INTR_VEC_NUM: usize = 32;
+const KBD_INTR_VEC_NUM: usize = 33;
 
 const MASTER_ICW1_IOPORT_NUM: u32 = 0x20;
 const SLAVE_ICW1_IOPORT_NUM: u32 = 0xa0;
 
 const MASTER_ICW2_IOPORT_NUM: u32 = MASTER_ICW1_IOPORT_NUM + 1;
 const SLAVE_ICW2_IOPORT_NUM: u32 = SLAVE_ICW1_IOPORT_NUM + 1;
+
+const KBD_DATA_IOPORT_NUM: u32 = 0x60;
+const KEY_RELEASED_BIT_MASK: u32 = 0x80;
+const KEY_SCAN_CODE_MASK: u32 = !KEY_RELEASED_BIT_MASK;
 
 #[no_mangle]
 pub unsafe extern fn _start() {
@@ -53,6 +61,7 @@ unsafe fn init() {
 
 	// registering HW interrupt handlers
 	register_interrupt_handler(TIMER_INTR_VEC_NUM, timer_intr_handler);
+	register_interrupt_handler(KBD_INTR_VEC_NUM, kbd_intr_handler);
 
 	// programmable interrupt controller initialization
 	init_pic();
@@ -106,7 +115,22 @@ extern fn general_protection_error(err_code: usize) {
 
 extern fn timer_intr_handler() {
 	unsafe {
-		write!(&mut SCREEN, "@").unwrap();
+		end_of_intr_handling();
+	}
+}
+
+extern fn kbd_intr_handler() {
+	unsafe {
+		let key_scan_code = read_byte_from_port(KBD_DATA_IOPORT_NUM);
+
+		// deciding was it key press or key release
+		if (key_scan_code & KEY_RELEASED_BIT_MASK) == 0 {
+			// bit 7 is clear - key pressed
+			write!(&mut SCREEN, "key pressed: {:x}\n", key_scan_code).unwrap();
+		} else {
+			// bit 7 is set - key released
+			write!(&mut SCREEN, "key released: {:x}\n", key_scan_code & KEY_SCAN_CODE_MASK).unwrap();
+		}
 
 		end_of_intr_handling();
 	}

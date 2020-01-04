@@ -201,6 +201,21 @@ destroy_stack_frame
 
 ret
 
+.global read_byte_from_port
+read_byte_from_port:
+
+create_stack_frame
+
+# port number parameter
+movl 8(%ebp), %edx
+
+movl $0, %eax
+inb %dx, %al
+
+destroy_stack_frame
+
+ret
+
 .global load_idt
 load_idt:
 
