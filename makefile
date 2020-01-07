@@ -28,9 +28,13 @@ vpath %.c $(sys_dir)
 vpath %.s $(sys_dir)
 
 .INTERMEDIATE: uos
-uos: main.rs libuos.a
+uos: main.rs libuos.rlib
 	$(RUSTC) $(RUSTCFLAGS) $@ $<
 	strip $@
+
+.INTERMEDIATE: libuos.rlib
+libuos.rlib: lib.rs libuos.a
+	$(RUSTC) --crate-type lib $(RUSTCFLAGS) $(subst lib,, $(basename $@)) $<
 
 .INTERMEDIATE: libuos.a
 libuos.a: arch.o uos.o
@@ -66,4 +70,4 @@ rebuild: clean all
 
 .PHONY: clean
 clean:
-	$(RM) -f *.img *.a
+	$(RM) -f *.img *.a *.rlib

@@ -1,15 +1,15 @@
 #![no_std]
 #![no_main]
 
+#[macro_use]
+extern crate uos;
+
 use core::panic::PanicInfo;
-use core::fmt::{Write, Result};
+
+use uos::console;
 
 #[link(name = "uos")]
 extern {
-	// external llinkage for screen buffer memory area making compiler happy 
-	// (mutable pointer can't be shared between threads safely)
-	static SCREEN_BUF: *mut [u8; 3840];
-
 	fn get_sp() -> *const i32;
 
 	fn register_interrupt_handler(vec_num: usize, handler: extern fn());
@@ -24,8 +24,6 @@ extern {
 
 	fn interrupts_enable();
 }
-
-static mut SCREEN: ScreenWriter = ScreenWriter { pos: 0 };
 
 const DIVIDE_ERROR_INTR_VEC_NUM: usize = 0;
 const GENERAL_PROTECTION_ERR_VEC_NUM: usize = 13;
@@ -54,9 +52,9 @@ pub unsafe extern fn _start() {
 }
 
 unsafe fn init() {
-	SCREEN.clear();
+	console::clear();
 
-	write!(&mut SCREEN, "stack @{:p}\n", get_sp()).unwrap();
+	console_println!("stack @{:p}", get_sp());
 
 	// registering mandatory interrupt handlers
 	register_interrupt_handler(DIVIDE_ERROR_INTR_VEC_NUM, divide_error);
@@ -109,7 +107,7 @@ unsafe fn init_ata_hdd() {
 		write_byte_to_port(0x19, CMOS_RAM_CMD_PORT_NUM);
 		let hda_info = read_byte_from_port(CMOS_RAM_DATA_PORT_NUM);
 
-		writeln!(&mut SCREEN, "hda info: {:x}", hda_info).unwrap();
+		console_println!("hda info: {:x}", hda_info);
 	}
 }
 
@@ -120,13 +118,13 @@ unsafe fn end_of_intr_handling() {
 
 extern fn divide_error() {
 	unsafe {
-		write!(&mut SCREEN, "divide error").unwrap();
+		console_println!("divide error");
 	}
 }
 
 extern fn general_protection_error(err_code: usize) {
 	unsafe {
-		write!(&mut SCREEN, "general protection error: {:x}\n", err_code).unwrap();
+		console_println!("general protection error: {:x}", err_code);
 
 		loop {}
 	}
@@ -145,52 +143,13 @@ extern fn kbd_intr_handler() {
 		// deciding was it key press or key release
 		if (key_scan_code & KEY_RELEASED_BIT_MASK) == 0 {
 			// bit 7 is clear - key pressed
-			write!(&mut SCREEN, "key pressed: {:x}\n", key_scan_code).unwrap();
+			console_println!("key pressed: {:x}", key_scan_code);
 		} else {
 			// bit 7 is set - key released
-			write!(&mut SCREEN, "key released: {:x}\n", key_scan_code & KEY_SCAN_CODE_MASK).unwrap();
+			console_println!("key released: {:x}", key_scan_code & KEY_SCAN_CODE_MASK);
 		}
 
 		end_of_intr_handling();
-	}
-}
-
-// TODO make this object thread safe
-struct ScreenWriter {
-	pos: usize
-}
-
-impl ScreenWriter {
-	unsafe fn print(&mut self, s: &str) {
-		for b in s.bytes() {
-			if b == b'\n' {
-				let next_line_offset = 80 - (self.pos % 80);
-				self.pos += next_line_offset;
-			} else {
-				(*SCREEN_BUF)[self.pos*2] = b;
-				self.pos += 1;
-			}
-		}
-	}
-
-	unsafe fn clear(&mut self) {
-		for (i, b) in (*SCREEN_BUF).iter_mut().enumerate() {
-			*b = if (i & 0x1) == 1 {
-				0x7
-			} else {
-				0x20
-			}
-		}
-		self.pos = 0;
-	}
-}
-
-impl Write for ScreenWriter {
-	fn write_str(&mut self, s: &str) -> Result {
-		unsafe {
-			self.print(s);
-		}
-		Ok(())
 	}
 }
 

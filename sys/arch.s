@@ -65,8 +65,8 @@ idt_info:
 .short idt_limit
 .int idt_start
 
-.global SCREEN_BUF
-SCREEN_BUF:
+.global SCR_BUF
+SCR_BUF:
 .int 0xb8000
 
 intr_handlers:
