@@ -2,6 +2,10 @@ starting UOS image using qemu
 
 $ qemu-system-i386 -m 1 -display curses -fda uos.img -no-fd-bootchk -boot order=a
 
+the same as above but with hard disk installed
+
+$ qemu-system-i386 -m 1 -display curses -fda uos.img -hda hda.img -no-fd-bootchk -boot order=a
+
 loader.s and loader.c are the second stage loader files which will configure paging and pass control
 the core of the system written in Rust
 

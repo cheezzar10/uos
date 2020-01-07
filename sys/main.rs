@@ -39,6 +39,9 @@ const SLAVE_ICW1_IOPORT_NUM: u32 = 0xa0;
 const MASTER_ICW2_IOPORT_NUM: u32 = MASTER_ICW1_IOPORT_NUM + 1;
 const SLAVE_ICW2_IOPORT_NUM: u32 = SLAVE_ICW1_IOPORT_NUM + 1;
 
+const CMOS_RAM_CMD_PORT_NUM: u32 = 0x70;
+const CMOS_RAM_DATA_PORT_NUM: u32 = 0x71;
+
 const KBD_DATA_IOPORT_NUM: u32 = 0x60;
 const KEY_RELEASED_BIT_MASK: u32 = 0x80;
 const KEY_SCAN_CODE_MASK: u32 = !KEY_RELEASED_BIT_MASK;
@@ -65,6 +68,8 @@ unsafe fn init() {
 
 	// programmable interrupt controller initialization
 	init_pic();
+
+	init_ata_hdd();
 }
 
 unsafe fn init_pic() {
@@ -92,6 +97,20 @@ unsafe fn init_pic() {
 	load_idt();
 
 	interrupts_enable();
+}
+
+unsafe fn init_ata_hdd() {
+	// checking disk type
+	write_byte_to_port(0x12, CMOS_RAM_CMD_PORT_NUM);
+
+	let hdd_info = read_byte_from_port(CMOS_RAM_DATA_PORT_NUM);
+	if hdd_info & 0xf0 == 0xf0 {
+		// getting information about first hard disk from specific register
+		write_byte_to_port(0x19, CMOS_RAM_CMD_PORT_NUM);
+		let hda_info = read_byte_from_port(CMOS_RAM_DATA_PORT_NUM);
+
+		writeln!(&mut SCREEN, "hda info: {:x}", hda_info).unwrap();
+	}
 }
 
 unsafe fn end_of_intr_handling() {
