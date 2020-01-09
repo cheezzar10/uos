@@ -116,6 +116,8 @@ mov eax, cr0
 or eax, 1
 mov cr0, eax
 
+jmp loader_long_jump
+
 [section .data]
 loader_long_jump:
 ; long jump op code
