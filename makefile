@@ -7,7 +7,7 @@ LDFLAGS := -T$(bootldr_dir)/loader.ld
 ARFLAGS := ru
 RANLIB := ranlib
 RUSTC := rustc
-RUSTCFLAGS = --edition=2018 --emit=link -C panic=abort -C link-arg=-nostartfiles -C debuginfo=0 -L. --crate-name
+RUSTCFLAGS = --edition=2018 --target i686-unknown-linux-gnu --emit=link -C panic=abort -C link-arg=-nostartfiles -C debuginfo=0 -L. --crate-name
 
 .PHONY: all
 all: uos.img
