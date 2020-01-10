@@ -57,7 +57,7 @@ movl $STACK_TOP, %esp
 
 # passing physical address of system binary to VM init
 # for correct ELF header parsing
-pushl $0x9000
+pushl $0x10000
 call init_vm
 
 # saving returned entry point address
@@ -69,7 +69,7 @@ orl $0x80000000, %eax
 movl %eax, %cr0
 
 # configuring large stack for system code
-movl $0xfffc, %esp
+movl $0x1fffc, %esp
 
 # jumping to system code using entry point address
 pushl %edx

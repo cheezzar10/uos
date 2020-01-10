@@ -13,3 +13,19 @@ disassembly of loader code
 
 tail -c ++513 loader.bin > loader.bin.code
 objdump -D -bbinary -mi386 loader.bin
+
+one possible task switch design: 
+
+1. yield implemented as assembly gate
+2. it has access to pointers cur_task, next_task. This pointers are defined in assembly and referenced as extern
+3. yeild calls software interrupt ( performs syscall actually )
+
+saving current task state in it's task state structure ( pushad and then performing copy )
+calling scheduler_switch_task
+
+this function retrieves next task using scheduler_get_next_task and stores pointer to current task state structure ( not yet switched )
+returning to assembly code, performing to be switched task state copy on stack, performing popad, placing stored eip and flags on interrupt processing stack
+performing iret
+
+
+getting pointer to the next runnable task using scheduler_get_next_task()

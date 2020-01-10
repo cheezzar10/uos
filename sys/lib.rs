@@ -7,9 +7,6 @@ extern {
 	static SCR_BUF: *mut [u8; 3840];
 }
 
-// ( $f:expr ) => ( { writeln!(&mut ::uos::console::SCR_WRITER, $f).unwrap(); } );
-// ( $f:expr, $( $a:expr )* ) => ( { writeln!(&mut ::uos::console::SCR_WRITER, $f, $( $a )* ).unwrap(); } )
-
 #[macro_export]
 macro_rules! console_println {
 	( $f:expr ) => ( { ::uos::console::print(format_args!(concat!($f, "\n"))); } );
@@ -62,8 +59,10 @@ pub mod console {
 		SCR_WRITER.clear();
 	}
 
-	pub unsafe fn print(args: ::core::fmt::Arguments) {
-		::core::fmt::write(&mut SCR_WRITER, args).unwrap();
+	pub fn print(args: ::core::fmt::Arguments) {
+		unsafe {
+			::core::fmt::write(&mut SCR_WRITER, args).unwrap();
+		}
 	}
 
 }

@@ -34,25 +34,22 @@ add sp, 10
 mov ax, 0
 mov es, ax
 
-; loading 2nd stage loader and placing it at the address 0x8000
+; loading 2nd stage loader ( assuming it's not larger than 4k )
 ; read(char* buffer, size_t track_num, size_t start_sector, size_t sector_count, size_t head_num)
-read_sectors 8000h, 0, 2, 8, 0
+read_sectors 0f000h, 0, 2, 8, 0
 
-mov ax, 0
+; moving system binary image load buffer segment register at 64k
+mov ax, 1000h
 mov es, ax
 
 ; reading system binary image sectors
-read_sectors 9000h, 0, 1, 18, 1
+read_sectors 0h, 0, 1, 18, 1
 
-mov ax, 0
-mov es, ax
+read_sectors 2400h, 1, 1, 18, 0
 
-read_sectors 0b400h, 1, 1, 18, 0
+read_sectors 4800h, 1, 1, 18, 1
 
-mov ax, 0
-mov es, ax
-
-read_sectors 0d800h, 1, 1, 18, 1
+read_sectors 6c00h, 2, 1, 18, 0
 
 ; jumping to second stage loader
 jmp loader_jmp
@@ -123,10 +120,10 @@ loader_long_jump:
 ; long jump op code
 db 0eah
 ; 2nd stage loader init code location
-dw 8200h
+dw 0f200h
 ; system code segment selector
 dw 08h
 
 gdt_info:
 dw 17h
-dd 8000h
+dd 0f000h

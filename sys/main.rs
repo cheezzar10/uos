@@ -68,6 +68,13 @@ unsafe fn init() {
 	init_pic();
 
 	init_ata_hdd();
+
+	create_thread(idle_thread);
+
+	console_println!("init: yielding");
+	thread_yield();
+
+	console_println!("init: resumed");
 }
 
 unsafe fn init_pic() {
@@ -117,17 +124,13 @@ unsafe fn end_of_intr_handling() {
 }
 
 extern fn divide_error() {
-	unsafe {
-		console_println!("divide error");
-	}
+	console_println!("divide error");
 }
 
 extern fn general_protection_error(err_code: usize) {
-	unsafe {
-		console_println!("general protection error: {:x}", err_code);
+	console_println!("general protection error: {:x}", err_code);
 
-		loop {}
-	}
+	loop {}
 }
 
 extern fn timer_intr_handler() {
@@ -151,6 +154,27 @@ extern fn kbd_intr_handler() {
 
 		end_of_intr_handling();
 	}
+}
+
+// TODO move to dedicated threading library
+fn create_thread(f: fn()) {
+	console_println!("creating new thread: {:p}", f);
+}
+
+fn thread_yield() {
+}
+
+fn idle_thread() {
+	console_println!("idle: running");
+
+	for _ in 0..500000 {
+	}
+
+	console_println!("idle: yielding");
+
+	thread_yield();
+
+	console_println!("idle: exiting");
 }
 
 #[panic_handler]
