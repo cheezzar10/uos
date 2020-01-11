@@ -16,7 +16,7 @@ objdump -D -bbinary -mi386 loader.bin
 
 one possible task switch design: 
 
-1. yield implemented as assembly gate
+1. yield implemented as assembly gate ( currently the most reasonable behaviour for this function is to save on stack return value and return there instead of plain iret to nested sw interrupt )
 2. it has access to pointers cur_task, next_task. This pointers are defined in assembly and referenced as extern
 3. yeild calls software interrupt ( performs syscall actually )
 

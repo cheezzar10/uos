@@ -5,6 +5,8 @@
 .equ INTR_GATE, 0x8e00
 # trap handler descriptor
 .equ TRAP_GATE, 0x8f00
+# this size should be kept in sync with HLL code
+.equ TASK_CPU_STATE_STRUCT_SIZE, 44
 
 # interrupt vector definitions start
 .align 8
@@ -56,6 +58,13 @@ idt_start:
 .short INTR_GATE
 .short 0x0
 .endr
+
+# switch task syscall handler
+.short switch_task
+.short CODE_SEG_SEL
+# privilege level should be fixed to make accessible from user space
+.short INTR_GATE
+.short 0x0
 
 idt_end:
 
@@ -158,6 +167,18 @@ movl %esp, %eax
 addl $4, %eax
 ret
 
+.global get_eflags
+get_eflags:
+pushfl
+popl %eax
+ret
+
+.global get_cs
+get_cs:
+movl $0, %eax
+movw %cs, %ax
+ret
+
 .global register_interrupt_handler
 register_interrupt_handler:
 
@@ -235,6 +256,13 @@ nop_intr_handler:
 
 ret
 
+.global syscall
+syscall:
+
+int $48
+
+ret
+
 # interrupt service routine gates
 ISR 0
 ISR 1
@@ -285,3 +313,33 @@ ISR 44
 ISR 45
 ISR 46
 ISR 47
+
+switch_task:
+
+# saving cpu state
+pushal
+
+# passing stack pointer with saved current task state
+pushl %esp
+call save_current_task_state
+addl $4, %esp
+
+# switch to new task and get new stack pointer prepared for restore
+# moved 32 bytes down
+call switch_task_and_get_new_stack_ptr
+
+# restoring stack
+movl %eax, %esp
+
+# restoring task we switched to state on the stack
+pushl %esp
+call restore_current_task_state
+addl $4, %esp
+
+# call print_task_state
+
+# restoring registers
+popal
+
+# switching to new task completely
+iret

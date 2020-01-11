@@ -10,7 +10,7 @@ extern {
 #[macro_export]
 macro_rules! console_println {
 	( $f:expr ) => ( { ::uos::console::print(format_args!(concat!($f, "\n"))); } );
-	( $f:expr, $( $a:expr )* ) => ( { ::uos::console::print(format_args!(concat!($f, "\n"), $( $a )*)); } )
+	( $f:expr, $( $a:expr ), * ) => ( { ::uos::console::print(format_args!(concat!($f, "\n"), $( $a ), *)); } )
 }
 
 pub mod console {
