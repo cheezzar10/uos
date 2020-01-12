@@ -14,18 +14,15 @@ disassembly of loader code
 tail -c ++513 loader.bin > loader.bin.code
 objdump -D -bbinary -mi386 loader.bin
 
-one possible task switch design: 
+Nearest development tasks
+1. vm map fixes. binary loaded and mapped to 64k offset ( starting at address 0x0 )
+this approach has the follwing problems: 
+a. system binary larger than 63k will corrupt gdt
+b. first kernel task stack located at 128k - 4 bytes boundary ( stack area mapped using identity mapping )
+c. we need some space for kernel heap ( may be memory area after BIOS data area? ) or starting at 4k and mapped higher in memory
 
-1. yield implemented as assembly gate ( currently the most reasonable behaviour for this function is to save on stack return value and return there instead of plain iret to nested sw interrupt )
-2. it has access to pointers cur_task, next_task. This pointers are defined in assembly and referenced as extern
-3. yeild calls software interrupt ( performs syscall actually )
+2. drop SCR_BUF global pointer and perform screen output using dedicated C function
+3. currently returning from task function will crash the system ( we need task_wrapper(task_fn: fn()) )
+this design assumes that newly created threads will have it's eip point to task_wrapper and task function addr will be placed on top of the task stack
 
-saving current task state in it's task state structure ( pushad and then performing copy )
-calling scheduler_switch_task
-
-this function retrieves next task using scheduler_get_next_task and stores pointer to current task state structure ( not yet switched )
-returning to assembly code, performing to be switched task state copy on stack, performing popad, placing stored eip and flags on interrupt processing stack
-performing iret
-
-
-getting pointer to the next runnable task using scheduler_get_next_task()
+4. implement dynamic memory allocator ( bitmap allocator, 16k of dynamic memory )
