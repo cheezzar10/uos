@@ -26,3 +26,32 @@ c. we need some space for kernel heap ( may be memory area after BIOS data area?
 this design assumes that newly created threads will have it's eip point to task_wrapper and task function addr will be placed on top of the task stack
 
 4. implement dynamic memory allocator ( bitmap allocator, 16k of dynamic memory )
+
+creating new hdd disk image:
+
+$ dd if=/dev/zero of=hda.img bs=1k seek=16383 count=1
+
+getting list of loop devices
+
+$ losetup -f
+
+mounting image
+
+$ losetup /dev/loop1 hda.img
+
+partitioning it
+
+$ fdisk /dev/loop1
+
+creting loop devices related to just created partitions 
+
+$ kpartx -av /dev/loop1
+
+creating filesystem on this devices
+
+$ mkfs.ext2 /dev/mapper/loop1p1
+
+unmounting
+
+$ kpartx -d /dev/loop1
+$ losetup -d /dev/loop1
