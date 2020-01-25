@@ -7,6 +7,7 @@ extern crate uos;
 use core::panic::PanicInfo;
 use core::usize;
 use core::ptr;
+use core::mem;
 
 use uos::console;
 
@@ -198,6 +199,22 @@ extern fn kbd_intr_handler() {
 }
 
 // TODO move to dedicated threading library
+fn task_wrapper(task_fn: fn()) {
+	console_println!("task tid: {} - started", get_current_task_id());
+
+	task_fn();
+
+	console_println!("task tid: {} - exited", get_current_task_id());
+
+	unsafe {
+		// marking current task structure as unused
+		let cur_task: &mut Task = &mut TASKS[CUR_TASK_IDX];
+		cur_task.tid = usize::MAX;
+	}
+
+	thread_yield();
+}
+
 fn thread_create(f: fn()) {
 	console_println!("creating new task using task function: {:p}", f);
 
@@ -216,9 +233,16 @@ fn thread_create(f: fn()) {
 			let new_task_state = &mut t.cpu_state;
 			t.tid = i;
 
-			new_task_state.eip = f as u32;
+			new_task_state.eip = task_wrapper as u32;
 			// TODO add stack location func, 4k for each thread, growing down
 			new_task_state.esp = 0x1effc;
+
+			// placing task body function at the top of  the stack
+			*(new_task_state.esp as *mut u32) = f as u32;
+			// reserving space for bogus return value (task_wrapper function should never return)
+			new_task_state.esp -= 4 * (mem::size_of::<u32>() as u32);
+
+			console_println!("saved on stack task f: {:x}", *(new_task_state.esp as *mut u32).wrapping_add(2));
 
 			// using current thread code segment and flags
 			new_task_state.cs = get_cs();
@@ -261,9 +285,8 @@ fn idle_thread() {
 	for _ in 0..500000 {
 	}
 
-	console_println!("task tid: {} - yielding", get_current_task_id());
-
-	thread_yield();
+	// console_println!("task tid: {} - yielding", get_current_task_id());
+	// thread_yield();
 
 	console_println!("idle: exiting");
 }
