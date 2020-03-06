@@ -5,12 +5,6 @@ extern {
 	static SCR_BUF: *mut [u8; 3840];
 }
 
-#[macro_export]
-macro_rules! console_println {
-	( $f:expr ) => ( { ::uos::console::print(format_args!(concat!($f, "\n"))); } );
-	( $f:expr, $( $a:expr ), * ) => ( { ::uos::console::print(format_args!(concat!($f, "\n"), $( $a ), *)); } )
-}
-
 static mut SCR_WRITER: ScreenWriter = ScreenWriter { pos: 0 };
 
 // TODO make this object thread safe
