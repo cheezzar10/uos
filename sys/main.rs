@@ -9,6 +9,7 @@ use core::usize;
 
 use uos::console;
 use uos::task;
+use uos::alloc;
 
 #[link(name = "uos")]
 extern {
@@ -77,6 +78,9 @@ unsafe fn init() {
 	task::suspend();
 
 	console_println!("task tid: {} - resumed", task::curr_task_id());
+
+	let mem_block = alloc::alloc(1024);
+	console_println!("allocated mem block from dynamic memory: {:p}", mem_block);
 }
 
 unsafe fn init_pic() {

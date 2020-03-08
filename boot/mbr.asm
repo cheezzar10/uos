@@ -53,6 +53,8 @@ read_sectors 6c00h, 2, 1, 18, 0
 
 read_sectors 9000h, 2, 1, 18, 1
 
+read_sectors 0b400h, 3, 1, 18, 0
+
 ; jumping to second stage loader
 jmp loader_jmp
 
