@@ -55,19 +55,21 @@ pub fn init(task_idx: usize) {
 	}
 }
 
+unsafe fn find_free_task() -> Option<(usize, &'static mut Task)> {
+	for (i, t) in TASKS.iter_mut().enumerate() {
+		if t.tid == usize::MAX {
+			return Some((i, t))
+		}
+	}
+
+	None
+}
+
 pub fn create(f: fn()) {
 	console_println!("creating new task using task function: {:p}", f);
 
 	unsafe {
-		let mut new_task: Option<(usize, &mut Task)> = None;
-		for (i, t) in TASKS.iter_mut().enumerate() {
-			// searching for unused Task structure
-			if t.tid == usize::MAX {
-				new_task = Some((i, &mut TASKS[i]));
-
-				break;
-			}
-		}
+		let new_task = find_free_task();
 
 		if let Some((i, t)) = new_task {
 			let new_task_state = &mut t.cpu_state;
@@ -81,8 +83,6 @@ pub fn create(f: fn()) {
 			*(new_task_state.esp as *mut u32) = f as u32;
 			// reserving space for bogus return value (task_wrapper function should never return)
 			new_task_state.esp -= 4 * (mem::size_of::<u32>() as u32);
-
-			console_println!("saved on stack task f: {:x}", *(new_task_state.esp as *mut u32).wrapping_add(2));
 
 			// using current thread code segment and flags
 			new_task_state.cs = get_cs();

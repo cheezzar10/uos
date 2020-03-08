@@ -75,7 +75,7 @@ unsafe fn init() {
 
 	task::create(idle_thread);
 
-	console_println!("task tid: {} - yielding", task::curr_task_id());
+	console_println!("task tid: {} - suspending", task::curr_task_id());
 	task::suspend();
 
 	console_println!("task tid: {} - resumed", task::curr_task_id());
@@ -161,13 +161,10 @@ extern fn kbd_intr_handler() {
 }
 
 fn idle_thread() {
-	console_println!("task tid: {} - running", task::curr_task_id());
+	console_println!("idle task tid: {} - running", task::curr_task_id());
 
 	for _ in 0..500000 {
 	}
-
-	// console_println!("task tid: {} - yielding", curr_task_id());
-	// thread_yield();
 
 	console_println!("idle: exiting");
 }
