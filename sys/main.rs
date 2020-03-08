@@ -55,8 +55,6 @@ pub unsafe extern fn _start() {
 unsafe fn init() {
 	console::clear();
 
-	console_println!("stack ptr: {:p}", task::get_sp());
-
 	// registering mandatory interrupt handlers
 	register_interrupt_handler(DIVIDE_ERROR_INTR_VEC_NUM, divide_error);
 	register_interrupt_handler_with_err_code(GENERAL_PROTECTION_ERR_VEC_NUM, general_protection_error);
@@ -70,7 +68,7 @@ unsafe fn init() {
 
 	init_ata_hdd();
 
-	// performing first task initialization
+	//making this the first kernel task with tid = 0
 	task::init(0);
 
 	task::create(idle_thread);

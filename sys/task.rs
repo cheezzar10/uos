@@ -4,7 +4,7 @@ use core::usize;
 
 #[link(name = "uos")]
 extern {
-	pub fn get_sp() -> *const u32;
+	fn get_sp() -> *const u32;
 
 	fn get_eflags() -> u32;
 
@@ -13,6 +13,9 @@ extern {
 	fn syscall();
 }
 
+const TASK_STACK_SIZE: usize = 0x1000;
+const STACK_PTR_MASK: u32 = !(TASK_STACK_SIZE - 1) as u32;
+
 struct Task {
 	tid: usize,
 	cpu_state: TaskCpuState
@@ -20,7 +23,7 @@ struct Task {
 
 #[repr(C)]
 struct TaskCpuState {
-	// TODO add ds and pdbr
+	// TODO add ds and pdbr (also u32 should be changed to usize)
 	edi: u32,
 	esi: u32,
 	ebp: u32,
@@ -52,6 +55,14 @@ pub fn init(task_idx: usize) {
 
 		// assuming that this function will be called for init only
 		cur_task.tid = task_idx;
+
+		let cur_sp: usize = get_sp() as usize;
+
+		// calculating task stack pointer location by rounding current stack location to stack limit boundary
+		let task_sp = ((cur_sp + (TASK_STACK_SIZE - 1)) & (!TASK_STACK_SIZE + 1)) - 4;
+
+		console_println!("task {} stack ptr: {:x}", cur_task.tid, task_sp);
+		cur_task.cpu_state.esp = task_sp as u32;
 	}
 }
 
@@ -65,6 +76,21 @@ unsafe fn find_free_task() -> Option<(usize, &'static mut Task)> {
 	None
 }
 
+unsafe fn get_stack_ptr() -> u32 {
+	let mut min_stack_page: u32 = (usize::MAX as u32) & STACK_PTR_MASK;
+
+	for t in TASKS.iter() {
+		if t.tid != usize::MAX {
+			let stack_page = t.cpu_state.esp & STACK_PTR_MASK;
+			if stack_page < min_stack_page {
+				min_stack_page = stack_page;
+			}
+		}
+	}
+
+	min_stack_page - 4
+}
+
 pub fn create(f: fn()) {
 	console_println!("creating new task using task function: {:p}", f);
 
@@ -73,11 +99,11 @@ pub fn create(f: fn()) {
 
 		if let Some((i, t)) = new_task {
 			let new_task_state = &mut t.cpu_state;
-			t.tid = i;
 
 			new_task_state.eip = task_wrapper as u32;
-			// TODO add stack location func, 4k for each thread, growing down
-			new_task_state.esp = 0x1effc;
+			new_task_state.esp = get_stack_ptr();
+
+			t.tid = i;
 
 			// placing task body function at the top of  the stack
 			*(new_task_state.esp as *mut u32) = f as u32;
@@ -88,9 +114,9 @@ pub fn create(f: fn()) {
 			new_task_state.cs = get_cs();
 			new_task_state.eflags = get_eflags();
 
-			console_println!("new task tid: {}, state = eip: {:x}, eflags: {:x}, cs: {:x}", t.tid, new_task_state.eip, new_task_state.eflags, new_task_state.cs);
+			console_println!("new task tid: {}, state: {{ eip: {:x}, esp: {:x}, eflags: {:x} }}", t.tid, new_task_state.eip, new_task_state.esp, new_task_state.eflags);
 		} else {
-			console_println!("task descriptors limit exceeded");
+			console_println!("task descriptors limit exceded");
 		}
 	}
 }
@@ -126,13 +152,18 @@ fn task_wrapper(task_fn: fn()) {
 #[no_mangle]
 pub unsafe extern fn switch_task_and_get_new_stack_ptr() -> *const u8 {
 	let cur_task_id = curr_task_id();
-	console_println!("current task tid: {}, cpu state ptr: {:p}", cur_task_id, &TASKS[CUR_TASK_IDX].cpu_state);
+
+	let curr_task_cpu_state = &TASKS[CUR_TASK_IDX].cpu_state;
+	console_println!("current task tid: {}, state: {{ eip: {:x}, esp: {:x}, eflags: {:x} }}", cur_task_id, 
+			curr_task_cpu_state.eip, curr_task_cpu_state.esp, curr_task_cpu_state.eflags);
 
 	for (i, t) in TASKS.iter_mut().enumerate() {
 		if t.tid != cur_task_id && t.tid != usize::MAX {
 			CUR_TASK_IDX = i;
 
-			console_println!("switched to task tid: {}, cpu state ptr: {:p}", t.tid, &t.cpu_state);
+			let next_task_cpu_state = &t.cpu_state;
+			console_println!("switched to task tid: {}, state: {{ eip: {:x}, esp: {:x}, eflags: {:x} }}", t.tid, 
+					next_task_cpu_state.eip, next_task_cpu_state.esp, next_task_cpu_state.eflags);
 			break;
 		}
 	}
