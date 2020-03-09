@@ -13,3 +13,5 @@ pub mod task;
 pub mod alloc;
 
 pub mod lock;
+
+pub mod vec;

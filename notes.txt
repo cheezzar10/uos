@@ -55,3 +55,5 @@ unmounting
 
 $ kpartx -d /dev/loop1
 $ losetup -d /dev/loop1
+
+0xa258

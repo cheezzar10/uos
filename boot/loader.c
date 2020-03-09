@@ -51,6 +51,41 @@ void int2hex(uint32_t n, char* buf) {
 }
 //  the end of loader debug related stuff
 
+size_t strlen(const char* str) {
+	size_t i = 0;
+	for (;str[i] != '\0';i++);
+	return i;
+}
+
+int strcmp(const char* s1, const char* s2) {
+	size_t s1_len = strlen(s1);
+	size_t s2_len = strlen(s2);
+
+	size_t n = s1_len;
+	if (s2_len < s1_len) {
+		n = s2_len;
+	}
+
+	size_t i = 0;
+	for(;i < n && s1[i] == s2[i];i++);
+
+	if (s1[i] == s2[i]) {
+		return 0;
+	} else if (s1[i] < s2[i]) {
+		return -1;
+	} else {
+		return 1;
+	}
+}
+
+void* memset(void* dst, int c, size_t n) {
+	char* d = dst;
+	for (size_t i = 0;i < n;i++) {
+		d[i] = c;
+	}
+	return dst;
+}
+
 // ELF related stuff
 
 // ELF header structure
@@ -99,7 +134,7 @@ struct ElfSecHeader {
 	uint32_t sh_entsize;
 };
 
-static void init_sys_vm_map(const struct ElfSecHeader sec_hdr[], size_t sec_hdr_num, uint32_t* pg_tbl, uint32_t sys_bin_pg_offset);
+static void init_sys_vm_map(const struct ElfHeader* elf_hdr, uint32_t* pg_tbl);
 
 void* init_vm(struct ElfHeader* elf_hdr) {
 	// VM page directory base address starts at 4kb
@@ -126,15 +161,18 @@ void* init_vm(struct ElfHeader* elf_hdr) {
 		pt[i] = pt_entry | 0x3;
 	}
 
-	init_sys_vm_map((void*)elf_hdr + elf_hdr->e_shoff, elf_hdr->e_shnum, pt, (uint32_t)elf_hdr >> 12);
+	init_sys_vm_map(elf_hdr, pt);
 
 	set_cr3(pd_base);
 
 	return (void*)elf_hdr->e_entry;
 }
 
-static void init_sys_vm_map(const struct ElfSecHeader sec_hdr[], size_t sec_hdr_num, uint32_t* pg_tbl, uint32_t sys_bin_pg_offset) {
-	for (size_t i = 0;i < sec_hdr_num;i++) {
+static void init_sys_vm_map(const struct ElfHeader* elf_hdr, uint32_t* pg_tbl) {
+	const struct ElfSecHeader* sec_hdr = (void*)elf_hdr + elf_hdr->e_shoff;
+	const uint32_t sys_bin_pg_offset = (uint32_t)elf_hdr >> 12;
+
+	for (size_t i = 0;i < elf_hdr->e_shnum;i++) {
 		if (sec_hdr[i].sh_addr == NULL) {
 			// skipping null sections
 			continue;
@@ -162,6 +200,22 @@ static void init_sys_vm_map(const struct ElfSecHeader sec_hdr[], size_t sec_hdr_
 
 			pg_tbl_entry = (sys_bin_pg_offset + sec_vm_pg_offset + pg_idx) << 12;
 			pg_tbl[pg_idx] = pg_tbl_entry | (PG_TBL_ENTRY_PRESENT_BIT | PG_TBL_ENTRY_RW_BIT | PG_TBL_ENTRY_MAPPED_BIT);
+		}
+
+		const struct ElfSecHeader* str_tbl_sec = &sec_hdr[elf_hdr->e_shstrndx];
+		const char* sec_name = ((void*)elf_hdr + str_tbl_sec->sh_offset) + sec_hdr[i].sh_name;
+
+		if (!strcmp(sec_name, ".bss")) {
+			void* bss_sec_addr = (void*)elf_hdr + sec_hdr[i].sh_offset;
+			// zeroing out .bss section
+			memset(bss_sec_addr, 0, sec_hdr[i].sh_size);
+
+			char hex_buf[] = "0x00000000";
+			print("bss section size: ");
+			int2hex(sec_hdr[i].sh_size, &hex_buf[2]);
+			print(hex_buf);
+
+			print("\n");
 		}
 	}
 }
