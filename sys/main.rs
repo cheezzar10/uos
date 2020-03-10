@@ -69,11 +69,12 @@ unsafe fn init() {
 	init_ata_hdd();
 
 	//making this the first kernel task with tid = 0
-	task::init(0);
+	task::init_curr_task(0);
 
 	task::create(idle_thread);
 
 	console_println!("task tid: {} - suspending", task::curr_task_id());
+
 	task::suspend();
 
 	console_println!("task tid: {} - resumed", task::curr_task_id());
@@ -164,7 +165,7 @@ fn idle_thread() {
 	for _ in 0..500000 {
 	}
 
-	console_println!("idle: exiting");
+	console_println!("idle task tid: {} - stopped", task::curr_task_id());
 }
 
 #[panic_handler]

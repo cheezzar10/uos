@@ -42,9 +42,11 @@ struct TaskCpuState {
 
 static NULL_TASK_CPU_STATE: TaskCpuState = TaskCpuState { edi: 0, esi: 0, ebp: 0, esp: 0, ebx: 0, edx: 0, ecx: 0, eax: 0, eip: 0, cs: 0, eflags: 0 };
 
-static TASKS: lock::Mutex<vec::Vec<Task>> = lock::Mutex::new(vec::Vec::new());
+type TaskQueue = (Option<Task>, vec::Vec<Task>);
 
-pub fn init(ttid: usize) {
+static TASKS: lock::Mutex<TaskQueue> = lock::Mutex::new((None, vec::Vec::new()));
+
+pub fn init_curr_task(ttid: usize) {
 	unsafe {
 		let mut cur_task = Task {
 			tid: ttid,
@@ -62,7 +64,9 @@ pub fn init(ttid: usize) {
 		cur_task.cpu_state.esp = task_sp as u32;
 
 		let mut tasks_guard = TASKS.lock();
-		tasks_guard.push(cur_task);
+		let (curr_task, _): &mut (Option<Task>, vec::Vec<Task>) = &mut *tasks_guard;
+
+		*curr_task = Some(cur_task);
 	}
 }
 
@@ -70,7 +74,9 @@ fn get_max_tid() -> usize {
 	let mut max_tid: usize = 0;
 
 	let tasks_guard = TASKS.lock();
-	for t in tasks_guard.iter() {
+	let (_, tasks) = &*tasks_guard;
+	
+	for t in tasks.iter() {
 		if t.tid > max_tid {
 			max_tid = t.tid;
 		}
@@ -80,10 +86,18 @@ fn get_max_tid() -> usize {
 }
 
 fn get_stack_ptr() -> u32 {
-	let mut min_stack_page: u32 = (usize::MAX as u32) & STACK_PTR_MASK;
-
 	let tasks_guard = TASKS.lock();
-	for t in tasks_guard.iter() {
+	let (curr_task, tasks) = &*tasks_guard;
+
+	let mut min_stack_page: u32 = if let Some(cur_task) = curr_task {
+		cur_task.cpu_state.esp
+	} else {
+		console_println!("new task stack ptr calculation failed - current task not set");
+
+		loop {}
+	} & STACK_PTR_MASK;
+
+	for t in tasks.iter() {
 		let stack_page = t.cpu_state.esp & STACK_PTR_MASK;
 		if stack_page < min_stack_page {
 			min_stack_page = stack_page;
@@ -121,12 +135,10 @@ pub fn create(f: fn()) {
 		console_println!("new task tid: {}, state: {{ eip: {:x}, esp: {:x}, eflags: {:x} }}", new_task.tid, new_task_state.eip, new_task_state.esp, new_task_state.eflags);
 
 		let mut tasks_guard = TASKS.lock();
+		let (_, tasks) = &mut *tasks_guard;
 
-		let tasks_len = tasks_guard.len();
-		tasks_guard.push(new_task);
-
-		// restoring currently running task location at the and of the tasks vector
-		tasks_guard.swap(tasks_len - 1, tasks_len);
+		// placing new tasks to tasks queue
+		tasks.push(new_task);
 	}
 }
 
@@ -138,7 +150,15 @@ pub fn suspend() {
 
 pub fn curr_task_id() -> usize {
 	let tasks_guard = TASKS.lock();
-	tasks_guard.last().unwrap().tid
+	let (curr_task, _) = &*tasks_guard;
+
+	if let Some(ct) = curr_task {
+		ct.tid
+	} else {
+		console_println!("current task not set");
+
+		usize::MAX
+	}
 }
 
 fn task_wrapper(task_fn: fn()) {
@@ -146,62 +166,92 @@ fn task_wrapper(task_fn: fn()) {
 
 	task_fn();
 
-	console_println!("task tid: {} - exited", curr_task_id());
+	console_println!("task tid: {} - completed", curr_task_id());
 
-	let mut tasks_guard = TASKS.lock();
-
-	// TODO postpone removing, remove in switch_task by marking task state as exited
-	tasks_guard.pop();
+	reset_curr_task();
 
 	suspend();
 
-	console_println!("last task exited");
+	// completed task execution should never be resumed
+	console_println!("error: completed task resumed");
 
 	loop {}
+}
+
+fn reset_curr_task() {
+	let mut tasks_guard = TASKS.lock();
+	let (curr_task, _) = &mut *tasks_guard;
+
+	*curr_task = None;
 }
 
 #[no_mangle]
 pub unsafe extern fn switch_task_and_get_new_stack_ptr() -> *const u8 {
 	let mut tasks_guard = TASKS.lock();
+	let (curr_task, tasks) = &mut *tasks_guard;
 
-	let curr_task = tasks_guard.pop().unwrap();
-	let curr_task_cpu_state = &curr_task.cpu_state;
+	let task_queue_head = tasks.pop();
+	if let Some(next_task) = task_queue_head {
 
-	console_println!("current task tid: {}, state: {{ eip: {:x}, esp: {:x}, eflags: {:x} }}", curr_task.tid, 
-			curr_task_cpu_state.eip, curr_task_cpu_state.esp, curr_task_cpu_state.eflags);
+		if let Some(cur_task) = curr_task {
+			console_println!("current task tid: {}, state: {{ eip: {:x}, esp: {:x}, eflags: {:x} }}", cur_task.tid, 
+					cur_task.cpu_state.eip, cur_task.cpu_state.esp, cur_task.cpu_state.eflags);
 
-	if !tasks_guard.is_empty() {
-		let next_task: &Task = tasks_guard.last().unwrap();
-		let next_task_cpu_state: &TaskCpuState = &next_task.cpu_state;
+			// placing current task to the end of the task queue
+			tasks.push(Task {
+				tid: cur_task.tid,
+				cpu_state: TaskCpuState {
+					..cur_task.cpu_state
+				}
+			});
+		}
 
 		console_println!("switched to task tid: {}, state: {{ eip: {:x}, esp: {:x}, eflags: {:x} }}", next_task.tid, 
-				next_task_cpu_state.eip, next_task_cpu_state.esp, next_task_cpu_state.eflags);
+				next_task.cpu_state.eip, next_task.cpu_state.esp, next_task.cpu_state.eflags);
 
-		(next_task_cpu_state.esp - 32) as *const u8
+		let next_task_esp = next_task.cpu_state.esp;
+
+		*curr_task = Some(next_task);
+
+		(next_task_esp - 32) as *const u8
 	} else {
-		let rv = (curr_task.cpu_state.esp - 32) as *const u8;
+		if let Some(cur_task) = curr_task {
+			let rv = (cur_task.cpu_state.esp - 32) as *const u8;
 
-		console_println!("empty");
+			console_println!("current task tid: {} execution continued", cur_task.tid);
 
-		tasks_guard.push(curr_task);
-		
-		rv
+			rv
+		} else {
+			console_println!("failed to switch task: current task not set and task queue is empty");
+
+			loop {}
+		}
 	}
 }
 
 #[no_mangle]
 pub unsafe extern fn save_current_task_state(task_cpu_state_ptr: *const u8) {
 	let mut tasks_guard = TASKS.lock();
+	let (curr_task, _) = &mut *tasks_guard;
 
-	let curr_task: &mut Task = tasks_guard.last_mut().unwrap();
-	ptr::copy_nonoverlapping(task_cpu_state_ptr as *const TaskCpuState, &mut curr_task.cpu_state, 1);
+	if let Some(cur_task) = curr_task {
+		ptr::copy_nonoverlapping(task_cpu_state_ptr as *const TaskCpuState, &mut cur_task.cpu_state, 1);
+	} else {
+		console_println!("task state saving skipped");
+	}
 }
 
 #[no_mangle]
 pub unsafe extern fn restore_current_task_state(task_cpu_state_ptr: *mut u8) {
 	let tasks_guard = TASKS.lock();
+	let (curr_task, _) = &*tasks_guard;
 
-	let curr_task: &Task = tasks_guard.last().unwrap();
-	ptr::copy_nonoverlapping(&curr_task.cpu_state, task_cpu_state_ptr as *mut TaskCpuState, 1);
+	if let Some(cur_task) = curr_task {
+		ptr::copy_nonoverlapping(&cur_task.cpu_state, task_cpu_state_ptr as *mut TaskCpuState, 1);
+	} else {
+		console_println!("current task not set - failed to restore task state");
+
+		loop {}
+	}
 }
 

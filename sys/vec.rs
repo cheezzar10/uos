@@ -59,7 +59,6 @@ impl<T> Vec<T> {
 	}
 
 	pub fn push(&mut self, val: T) {
-		console_println!("pushing");
 		if self.len == self.cap {
 			if self.cap == 0 {
 				self.reserve(2);
