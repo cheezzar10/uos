@@ -1,11 +1,16 @@
+use crate::task;
+use crate::ring;
+
 #[link(name = "uos")]
 extern {
-	// external llinkage for screen buffer memory area making compiler happy 
+	// external linkage for screen buffer memory area making compiler happy 
 	// (mutable pointer can't be shared between threads safely)
 	static SCR_BUF: *mut [u8; 3840];
 }
 
 static mut SCR_WRITER: ScreenWriter = ScreenWriter { pos: 0 };
+
+pub static KBD_BUF: ring::RingBuf = ring::RingBuf::new();
 
 // TODO make this object thread safe
 pub struct ScreenWriter {
@@ -14,14 +19,18 @@ pub struct ScreenWriter {
 
 impl ScreenWriter {
 	unsafe fn print(&mut self, s: &str) {
-		for b in s.bytes() {
-			if b == b'\n' {
-				let next_line_offset = 80 - (self.pos % 80);
-				self.pos += next_line_offset;
-			} else {
-				(*SCR_BUF)[self.pos*2] = b;
-				self.pos += 1;
-			}
+		for chr in s.bytes() {
+			self.write_char(chr);
+		}
+	}
+
+	unsafe fn write_char(&mut self, chr: u8) {
+		if chr == b'\n' {
+			let next_line_offset = 80 - (self.pos % 80);
+			self.pos += next_line_offset;
+		} else {
+			(*SCR_BUF)[self.pos*2] = chr;
+			self.pos += 1;
 		}
 	}
 
@@ -53,5 +62,24 @@ pub unsafe fn clear() {
 pub fn print(args: ::core::fmt::Arguments) {
 	unsafe {
 		::core::fmt::write(&mut SCR_WRITER, args).unwrap();
+	}
+}
+
+pub fn read_char() -> u8 {
+	loop {
+		let chr = match KBD_BUF.pop_front() {
+			Some(c) => c,
+			_ => {
+				task::suspend();
+				continue
+			}
+		};
+
+		unsafe {
+			// echoing pressed character on the console
+			SCR_WRITER.write_char(chr);
+		}
+
+		return chr
 	}
 }

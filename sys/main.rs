@@ -7,6 +7,8 @@ extern crate uos;
 use core::panic::PanicInfo;
 use core::usize;
 
+use core::sync::atomic::{ AtomicBool, Ordering };
+
 use uos::console;
 use uos::task;
 
@@ -42,15 +44,21 @@ const CMOS_RAM_DATA_PORT_NUM: u32 = 0x71;
 
 const KBD_DATA_IOPORT_NUM: u32 = 0x60;
 const KEY_RELEASED_BIT_MASK: u32 = 0x80;
-const KEY_SCAN_CODE_MASK: u32 = !KEY_RELEASED_BIT_MASK;
+
+// required for modifier key release case handling
+// const KEY_SCAN_CODE_MASK: u32 = !KEY_RELEASED_BIT_MASK;
+
+// standard key codes
+static KBD_SCAN_CODES: [u8; 83] = [ 0, 0, b'1', b'2', b'3', b'4', b'5', b'6', b'7', b'8', b'9', b'0', b'-', b'=', 0, 0, b'q', b'w', b'e', b'r', b't', b'y', b'u', b'i', b'o', b'p', b'[', b']', 0, 0, 0, 
+		b'a', b's', b'd', b'f', b'g', b'h', b'j', b'k', b'l', b';', b'\'', b'`', 0, b'\\', b'z', b'x', b'c', b'v', b'b', b'n', b'm', b',', b'.', b'/', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ];
+
+static SUSPEND_IDLE_TASK: AtomicBool = AtomicBool::new(false);
 
 #[no_mangle]
 pub unsafe extern fn _start() {
 	init();
-
-	loop {}
 }
-
 
 unsafe fn init() {
 	console::clear();
@@ -73,11 +81,9 @@ unsafe fn init() {
 
 	task::create(idle_thread);
 
-	console_println!("task tid: {} - suspending", task::curr_task_id());
-
-	task::suspend();
-
-	console_println!("task tid: {} - resumed", task::curr_task_id());
+	loop {
+		let _chr = console::read_char();
+	}
 }
 
 unsafe fn init_pic() {
@@ -148,11 +154,13 @@ extern fn kbd_intr_handler() {
 
 		// deciding was it key press or key release
 		if (key_scan_code & KEY_RELEASED_BIT_MASK) == 0 {
-			// bit 7 is clear - key pressed
-			console_println!("key pressed: {:x}", key_scan_code);
+			// TODO scan table range check
+			console::KBD_BUF.push_back(KBD_SCAN_CODES[key_scan_code as usize]);
+
+			// setting suspend idle task flag to give a chance to drain keyboard buffer
+			SUSPEND_IDLE_TASK.store(true, Ordering::SeqCst);
 		} else {
-			// bit 7 is set - key released
-			console_println!("key released: {:x}", key_scan_code & KEY_SCAN_CODE_MASK);
+			// TODO reset modifier key state ( i.e. Shift key released )
 		}
 
 		end_of_intr_handling();
@@ -160,12 +168,14 @@ extern fn kbd_intr_handler() {
 }
 
 fn idle_thread() {
-	console_println!("idle task tid: {} - running", task::curr_task_id());
+	loop {
+		if SUSPEND_IDLE_TASK.load(Ordering::SeqCst) {
+			// reset idle task suspend flag, making idle task eligible for scheduling again
+			SUSPEND_IDLE_TASK.store(false, Ordering::SeqCst);
 
-	for _ in 0..500000 {
+			task::suspend();
+		}
 	}
-
-	console_println!("idle task tid: {} - stopped", task::curr_task_id());
 }
 
 #[panic_handler]

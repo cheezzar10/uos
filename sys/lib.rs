@@ -15,3 +15,5 @@ pub mod alloc;
 pub mod lock;
 
 pub mod vec;
+
+pub mod ring;

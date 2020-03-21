@@ -60,7 +60,6 @@ pub fn init_curr_task(ttid: usize) {
 		// calculating task stack pointer location by rounding current stack location to stack limit boundary
 		let task_sp = ((cur_sp + (TASK_STACK_SIZE - 1)) & (!TASK_STACK_SIZE + 1)) - 4;
 
-		console_println!("task {} stack ptr: {:x}", cur_task.tid, task_sp);
 		cur_task.cpu_state.esp = task_sp as u32;
 
 		let mut tasks_guard = TASKS.lock();
@@ -108,8 +107,6 @@ fn get_stack_ptr() -> u32 {
 }
 
 pub fn create(f: fn()) {
-	console_println!("creating new task using task function: {:p}", f);
-
 	unsafe {
 		let mut new_task = Task {
 			tid: get_max_tid() + 1,
@@ -131,8 +128,6 @@ pub fn create(f: fn()) {
 		// using current thread code segment and flags
 		new_task_state.cs = get_cs();
 		new_task_state.eflags = get_eflags();
-
-		console_println!("new task tid: {}, state: {{ eip: {:x}, esp: {:x}, eflags: {:x} }}", new_task.tid, new_task_state.eip, new_task_state.esp, new_task_state.eflags);
 
 		let mut tasks_guard = TASKS.lock();
 		let (_, tasks) = &mut *tasks_guard;
@@ -162,11 +157,7 @@ pub fn curr_task_id() -> usize {
 }
 
 fn task_wrapper(task_fn: fn()) {
-	console_println!("task tid: {} - started", curr_task_id());
-
 	task_fn();
-
-	console_println!("task tid: {} - completed", curr_task_id());
 
 	reset_curr_task();
 
@@ -194,9 +185,6 @@ pub unsafe extern fn switch_task_and_get_new_stack_ptr() -> *const u8 {
 	if let Some(next_task) = task_queue_head {
 
 		if let Some(cur_task) = curr_task {
-			console_println!("current task tid: {}, state: {{ eip: {:x}, esp: {:x}, eflags: {:x} }}", cur_task.tid, 
-					cur_task.cpu_state.eip, cur_task.cpu_state.esp, cur_task.cpu_state.eflags);
-
 			// placing current task to the end of the task queue
 			tasks.push(Task {
 				tid: cur_task.tid,
@@ -206,9 +194,6 @@ pub unsafe extern fn switch_task_and_get_new_stack_ptr() -> *const u8 {
 			});
 		}
 
-		console_println!("switched to task tid: {}, state: {{ eip: {:x}, esp: {:x}, eflags: {:x} }}", next_task.tid, 
-				next_task.cpu_state.eip, next_task.cpu_state.esp, next_task.cpu_state.eflags);
-
 		let next_task_esp = next_task.cpu_state.esp;
 
 		*curr_task = Some(next_task);
@@ -217,8 +202,6 @@ pub unsafe extern fn switch_task_and_get_new_stack_ptr() -> *const u8 {
 	} else {
 		if let Some(cur_task) = curr_task {
 			let rv = (cur_task.cpu_state.esp - 32) as *const u8;
-
-			console_println!("current task tid: {} execution continued", cur_task.tid);
 
 			rv
 		} else {
@@ -236,8 +219,6 @@ pub unsafe extern fn save_current_task_state(task_cpu_state_ptr: *const u8) {
 
 	if let Some(cur_task) = curr_task {
 		ptr::copy_nonoverlapping(task_cpu_state_ptr as *const TaskCpuState, &mut cur_task.cpu_state, 1);
-	} else {
-		console_println!("task state saving skipped");
 	}
 }
 
