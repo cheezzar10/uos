@@ -179,8 +179,8 @@ movl $0, %eax
 movw %cs, %ax
 ret
 
-.global register_interrupt_handler
-register_interrupt_handler:
+.global register_handler
+register_handler:
 
 # interrupt vector number
 movl 4(%esp), %edx
@@ -192,8 +192,8 @@ movl %eax, intr_handlers(, %edx, 4)
 ret
 
 # above function copy for HLL type safety
-.global register_interrupt_handler_with_err_code
-register_interrupt_handler_with_err_code:
+.global register_handler_with_err_code
+register_handler_with_err_code:
 
 # interrupt vector number
 movl 4(%esp), %edx
@@ -204,8 +204,8 @@ movl %eax, intr_handlers(, %edx, 4)
 
 ret
 
-.global write_byte_to_port
-write_byte_to_port:
+.global out_byte
+out_byte:
 
 create_stack_frame
 
@@ -222,8 +222,8 @@ destroy_stack_frame
 
 ret
 
-.global read_byte_from_port
-read_byte_from_port:
+.global in_byte
+in_byte:
 
 create_stack_frame
 
@@ -244,8 +244,8 @@ lidt idt_info
 
 ret
 
-.global interrupts_enable
-interrupts_enable:
+.global intr_enable
+intr_enable:
 
 sti
 

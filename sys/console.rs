@@ -1,3 +1,5 @@
+use core::fmt;
+
 use crate::task;
 use crate::ring;
 
@@ -46,8 +48,8 @@ impl ScreenWriter {
 	}
 }
 
-impl ::core::fmt::Write for ScreenWriter {
-	fn write_str(&mut self, s: &str) -> ::core::fmt::Result {
+impl fmt::Write for ScreenWriter {
+	fn write_str(&mut self, s: &str) -> fmt::Result {
 		unsafe {
 			self.print(s);
 		}
@@ -59,9 +61,15 @@ pub unsafe fn clear() {
 	SCR_WRITER.clear();
 }
 
-pub fn print(args: ::core::fmt::Arguments) {
+pub fn print(args: fmt::Arguments) {
 	unsafe {
-		::core::fmt::write(&mut SCR_WRITER, args).unwrap();
+		fmt::write(&mut SCR_WRITER, args).unwrap();
+	}
+}
+
+pub fn print_str(s: &str) {
+	unsafe {
+		SCR_WRITER.print(s);
 	}
 }
 

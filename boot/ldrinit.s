@@ -55,18 +55,37 @@ movl $STACK_TOP, %esp
 
 # calling VM initialization function before 
 
+# allocating enough memory on stack for struct
+subl $8, %esp
+pushl %esp
+
 # passing physical address of system binary to VM init
 # for correct ELF header parsing
 pushl $0x10000
+
 call init_vm
+
+# removing parameters from the stack
+addl $8, %esp
 
 # saving returned entry point address
 movl %eax, %edx
+
+# saving bss section address
+popl %edi
+# and size
+popl %ecx
 
 # enabling paging by setting PG bit
 movl %cr0, %eax
 orl $0x80000000, %eax
 movl %eax, %cr0
+
+# zeroing out bss memory
+movl $0, %eax
+
+cld
+rep stosb
 
 # configuring large stack for system code
 movl $0x1fffc, %esp

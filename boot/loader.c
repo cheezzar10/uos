@@ -134,9 +134,16 @@ struct ElfSecHeader {
 	uint32_t sh_entsize;
 };
 
-static void init_sys_vm_map(const struct ElfHeader* elf_hdr, uint32_t* pg_tbl);
+struct BssData {
+	size_t addr;
+	size_t size;
+};
 
-void* init_vm(struct ElfHeader* elf_hdr) {
+static void init_sys_vm_map(const struct ElfHeader* elf_hdr, uint32_t* pg_tbl, struct BssData* bss_data);
+
+static void print_mem_dump(int32_t* mem, size_t len);
+
+void* init_vm(struct ElfHeader* elf_hdr, struct BssData* bss_data) {
 	// VM page directory base address starts at 4kb
 	uint32_t* pd_base = (uint32_t*)(0x1 << 12);
 
@@ -161,14 +168,29 @@ void* init_vm(struct ElfHeader* elf_hdr) {
 		pt[i] = pt_entry | 0x3;
 	}
 
-	init_sys_vm_map(elf_hdr, pt);
+	init_sys_vm_map(elf_hdr, pt, bss_data);
 
 	set_cr3(pd_base);
 
+	print_mem_dump((int32_t*)0x1b2b0, 8);
+
+	// TODO drop return value and pass a struct instead which will contain ( entry point address, bss section virtual address & virtual section size )
 	return (void*)elf_hdr->e_entry;
 }
 
-static void init_sys_vm_map(const struct ElfHeader* elf_hdr, uint32_t* pg_tbl) {
+void print_mem_dump(int32_t* mem, size_t len) {
+	print("\n");
+	for (size_t i = 0; i < len; i++) {
+		char hex_buf[] = "0x00000000";
+
+		int2hex(mem[i], &hex_buf[2]);
+		print(hex_buf);
+		print(" ");
+	}
+	print("\n");
+}
+
+static void init_sys_vm_map(const struct ElfHeader* elf_hdr, uint32_t* pg_tbl, struct BssData* bss_data) {
 	const struct ElfSecHeader* sec_hdr = (void*)elf_hdr + elf_hdr->e_shoff;
 	const uint32_t sys_bin_pg_offset = (uint32_t)elf_hdr >> 12;
 
@@ -200,22 +222,35 @@ static void init_sys_vm_map(const struct ElfHeader* elf_hdr, uint32_t* pg_tbl) {
 
 			pg_tbl_entry = (sys_bin_pg_offset + sec_vm_pg_offset + pg_idx) << 12;
 			pg_tbl[pg_idx] = pg_tbl_entry | (PG_TBL_ENTRY_PRESENT_BIT | PG_TBL_ENTRY_RW_BIT | PG_TBL_ENTRY_MAPPED_BIT);
+
+			print("page ");
+
+			char page_idx_buf[] = "0x00000000";
+			int2hex(pg_idx, &page_idx_buf[2]);
+			print(page_idx_buf);
+
+			print(" -> ");
+
+			char phys_page_idx_addr[] = "0x00000000";
+			int2hex(pg_tbl_entry >> 12, &phys_page_idx_addr[2]);
+			print(phys_page_idx_addr);
+
+			print("\n");
 		}
 
 		const struct ElfSecHeader* str_tbl_sec = &sec_hdr[elf_hdr->e_shstrndx];
 		const char* sec_name = ((void*)elf_hdr + str_tbl_sec->sh_offset) + sec_hdr[i].sh_name;
 
 		if (!strcmp(sec_name, ".bss")) {
-			void* bss_sec_addr = (void*)elf_hdr + sec_hdr[i].sh_offset;
-			// zeroing out .bss section
-			memset(bss_sec_addr, 0, sec_hdr[i].sh_size);
-
 			char hex_buf[] = "0x00000000";
-			print("bss section size: ");
-			int2hex(sec_hdr[i].sh_size, &hex_buf[2]);
+			print("bss section addr: ");
+			int2hex(sec_hdr[i].sh_addr, &hex_buf[2]);
 			print(hex_buf);
 
 			print("\n");
+
+			bss_data->addr = sec_hdr[i].sh_addr;
+			bss_data->size = sec_hdr[i].sh_size;
 		}
 	}
 }
