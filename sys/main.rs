@@ -7,6 +7,7 @@ extern crate uos;
 use core::panic::PanicInfo;
 use core::usize;
 
+use core::ptr;
 use core::sync::atomic::{ AtomicBool, Ordering };
 
 use uos::console;
@@ -30,14 +31,22 @@ const KEY_RELEASED_BIT_MASK: u32 = 0x80;
 // const KEY_SCAN_CODE_MASK: u32 = !KEY_RELEASED_BIT_MASK;
 
 // standard key codes
-static KBD_SCAN_CODES: [u8; 83] = [ 0, 0, b'1', b'2', b'3', b'4', b'5', b'6', b'7', b'8', b'9', b'0', b'-', b'=', 0, 0, b'q', b'w', b'e', b'r', b't', b'y', b'u', b'i', b'o', b'p', b'[', b']', 0, 0, 0, 
+static KBD_SCAN_CODES: [u8; 83] = [ 0, 0, b'1', b'2', b'3', b'4', b'5', b'6', b'7', b'8', b'9', b'0', b'-', b'=', 0, 0, b'q', b'w', b'e', b'r', b't', b'y', b'u', b'i', b'o', b'p', b'[', b']', 0, 0, 
 		b'a', b's', b'd', b'f', b'g', b'h', b'j', b'k', b'l', b';', b'\'', b'`', 0, b'\\', b'z', b'x', b'c', b'v', b'b', b'n', b'm', b',', b'.', b'/', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ];
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ];
 
 static SUSPEND_IDLE_TASK: AtomicBool = AtomicBool::new(false);
 
+pub struct BssInfo {
+	addr: *mut u8,
+	size: usize
+}
+
 #[no_mangle]
-pub unsafe extern fn _start() {
+pub unsafe extern fn _start(bss_info: BssInfo) {
+	// zeroing out BSS section (ideally this initialization should be fenced by atomic flag of some sort)
+	ptr::write_bytes(bss_info.addr, 0, bss_info.size);
+	
 	init();
 }
 

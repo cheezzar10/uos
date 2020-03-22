@@ -55,8 +55,9 @@ movl $STACK_TOP, %esp
 
 # calling VM initialization function before 
 
-# allocating enough memory on stack for struct
+# allocating enough memory on stack for BssData { addr, size } struct
 subl $8, %esp
+# passing on-stack address of BssData struct to VM init
 pushl %esp
 
 # passing physical address of system binary to VM init
@@ -71,7 +72,7 @@ addl $8, %esp
 # saving returned entry point address
 movl %eax, %edx
 
-# saving bss section address
+# saving bss section address from BssData struct
 popl %edi
 # and size
 popl %ecx
@@ -81,14 +82,15 @@ movl %cr0, %eax
 orl $0x80000000, %eax
 movl %eax, %cr0
 
-# zeroing out bss memory
-movl $0, %eax
-
-cld
-rep stosb
-
 # configuring large stack for system code
 movl $0x1fffc, %esp
+
+# configuring on stack BssInfo { addr, size } struct representation
+pushl %ecx
+pushl %edi
+
+# pushing bogus return value on stack cause we don't have any chances to return here
+pushl $0
 
 # jumping to system code using entry point address
 pushl %edx
