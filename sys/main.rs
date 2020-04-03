@@ -53,8 +53,7 @@ pub unsafe extern fn _start(bss_info: BssInfo) {
 unsafe fn init() {
 	console::clear();
 
-	// let kbd_buf_ptr: *const usize = 0xc2b0 as *const usize;
-	// let mem = slice::from_raw_parts(kbd_buf_ptr, 8);
+	console_println!("UOS v 0.1");
 
 	// registering mandatory interrupt handlers
 	intr::register_handler(DIVIDE_ERROR_INTR_VEC_NUM, divide_error);

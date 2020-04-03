@@ -168,6 +168,10 @@ void* init_vm(struct ElfHeader* elf_hdr, struct BssData* bss_data) {
 		pt[i] = pt_entry | 0x3;
 	}
 
+	// mapping BIOS data area at the 0x30000
+	size_t bios_data_area_pg_idx = 0x30000 >> 12;
+	pt[bios_data_area_pg_idx] = 0x3;
+
 	init_sys_vm_map(elf_hdr, pt, bss_data);
 
 	set_cr3(pd_base);

@@ -2,6 +2,7 @@ use core::fmt;
 
 use crate::task;
 use crate::ring;
+use crate::pio;
 
 #[link(name = "uos")]
 extern {
@@ -11,6 +12,12 @@ extern {
 }
 
 static mut SCR_WRITER: ScreenWriter = ScreenWriter { pos: 0 };
+
+const SCREEN_COLS: usize = 80;
+// re-mappped BIOS data area location
+const BIOS_DATA_AREA_ADDR: usize = 0x30400;
+
+const VIDEO_PAGE_0_CURSOR_POS_ADDR: usize = BIOS_DATA_AREA_ADDR + 80;
 
 pub static KBD_BUF: ring::RingBuf = ring::RingBuf::new();
 
@@ -28,12 +35,14 @@ impl ScreenWriter {
 
 	unsafe fn write_char(&mut self, chr: u8) {
 		if chr == b'\n' {
-			let next_line_offset = 80 - (self.pos % 80);
+			let next_line_offset = SCREEN_COLS - (self.pos % SCREEN_COLS);
 			self.pos += next_line_offset;
 		} else {
 			(*SCR_BUF)[self.pos*2] = chr;
 			self.pos += 1;
 		}
+
+		self.move_cursor();
 	}
 
 	unsafe fn clear(&mut self) {
@@ -45,6 +54,25 @@ impl ScreenWriter {
 			}
 		}
 		self.pos = 0;
+	}
+
+	unsafe fn move_cursor(&mut self) {
+		// requesting write for cursor position high byte
+		pio::out_byte(0xe, 0x3d4);
+		pio::out_byte((self.pos >> 8) as u32, 0x3d5);
+
+		// requesting cursor position low byte write
+		pio::out_byte(0xf, 0x3d4);
+		pio::out_byte((self.pos & 0xff) as u32, 0x3d5);
+	}
+
+	unsafe fn get_cursor_pos(&self) -> (usize, usize) {
+		let cursor_pos_ptr: *const u16 = VIDEO_PAGE_0_CURSOR_POS_ADDR as *const u16;
+
+		let cursor_col = *cursor_pos_ptr & 0xff;
+		let cursor_row = *cursor_pos_ptr >> 8;
+
+		(cursor_row as usize, cursor_col as usize)
 	}
 }
 
@@ -89,5 +117,11 @@ pub fn read_char() -> u8 {
 		}
 
 		return chr
+	}
+}
+
+pub fn get_cursor_pos() -> (usize, usize) {
+	unsafe {
+		SCR_WRITER.get_cursor_pos()
 	}
 }
