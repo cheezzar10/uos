@@ -116,6 +116,10 @@ impl<T> Vec<T> {
 		}
 	}
 
+	pub fn clear(&mut self) {
+		self.len = 0;
+	}
+
 	pub fn len(&self) -> usize {
 		self.len
 	}

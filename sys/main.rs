@@ -14,6 +14,7 @@ use uos::console;
 use uos::task;
 use uos::pio;
 use uos::intr;
+use uos::vec;
 
 const DIVIDE_ERROR_INTR_VEC_NUM: usize = 0;
 const GENERAL_PROTECTION_ERR_VEC_NUM: usize = 13;
@@ -31,7 +32,7 @@ const KEY_RELEASED_BIT_MASK: u32 = 0x80;
 // const KEY_SCAN_CODE_MASK: u32 = !KEY_RELEASED_BIT_MASK;
 
 // standard key codes
-static KBD_SCAN_CODES: [u8; 83] = [ 0, 0, b'1', b'2', b'3', b'4', b'5', b'6', b'7', b'8', b'9', b'0', b'-', b'=', 0, 0, b'q', b'w', b'e', b'r', b't', b'y', b'u', b'i', b'o', b'p', b'[', b']', 0, 0, 
+static KBD_SCAN_CODES: [u8; 83] = [ 0, 0, b'1', b'2', b'3', b'4', b'5', b'6', b'7', b'8', b'9', b'0', b'-', b'=', 0, 0, b'q', b'w', b'e', b'r', b't', b'y', b'u', b'i', b'o', b'p', b'[', b']', b'\n', 0, 
 		b'a', b's', b'd', b'f', b'g', b'h', b'j', b'k', b'l', b';', b'\'', b'`', 0, b'\\', b'z', b'x', b'c', b'v', b'b', b'n', b'm', b',', b'.', b'/', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
 		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ];
 
@@ -53,7 +54,7 @@ pub unsafe extern fn _start(bss_info: BssInfo) {
 unsafe fn init() {
 	console::clear();
 
-	console_println!("UOS v 0.1");
+	console_println!("RobCo UOS v 0.1");
 
 	// registering mandatory interrupt handlers
 	intr::register_handler(DIVIDE_ERROR_INTR_VEC_NUM, divide_error);
@@ -73,9 +74,20 @@ unsafe fn init() {
 
 	task::create(idle_thread);
 
-	console::print_str("> ");
+	let mut cmd_buf: vec::Vec<u8> = vec::Vec::with_cap(64);
 	loop {
-		let _chr = console::read_char();
+		console::print_str("> ");
+
+		cmd_buf.clear();
+		console::read_line(&mut cmd_buf);
+
+		// fix system image placement in memory, will be able to use string conversion functions
+		// let cmd = str::from_utf8(&cmd_buf).unwrap();
+		if cmd_buf.len() == 2 && cmd_buf[0] == b'p' && cmd_buf[1] == b's' {
+			console_println!("print task list");
+		} else {
+			console_println!("false");
+		}
 	}
 }
 

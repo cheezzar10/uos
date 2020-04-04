@@ -3,6 +3,7 @@ use core::fmt;
 use crate::task;
 use crate::ring;
 use crate::pio;
+use crate::vec;
 
 #[link(name = "uos")]
 extern {
@@ -123,5 +124,16 @@ pub fn read_char() -> u8 {
 pub fn get_cursor_pos() -> (usize, usize) {
 	unsafe {
 		SCR_WRITER.get_cursor_pos()
+	}
+}
+
+pub fn read_line(buf: &mut vec::Vec<u8>) {
+	loop {
+		let chr = read_char();
+		if chr == b'\n' {
+			break;
+		}
+
+		buf.push(chr);
 	}
 }
