@@ -14,6 +14,8 @@ void set_cr3(uint32_t* pd_base);
 #define SCRN_COLS 80
 #define SCRN_ROWS 24
 
+const size_t MEM_ORIGIN_VIRT_ADDR = 0x40000;
+
 const char* const SCRN_BUF_END = (char*)(SCRN_BUF_ORG + SCRN_COLS*SCRN_ROWS*2);
 
 const char HEX_DIGITS[16] = "0123456789abcdef";
@@ -49,6 +51,7 @@ void int2hex(uint32_t n, char* buf) {
 		n >>= 4;
 	}
 }
+
 //  the end of loader debug related stuff
 
 size_t strlen(const char* str) {
@@ -83,6 +86,17 @@ void* memset(void* dst, int c, size_t n) {
 	for (size_t i = 0;i < n;i++) {
 		d[i] = c;
 	}
+	return dst;
+}
+
+void* memcpy(void* dst, const void* src, size_t n) {
+	char* d = dst;
+	const char* s = src;
+
+	for (size_t i = 0;i < n;i++) {
+		d[i] = s[i];
+	}
+
 	return dst;
 }
 
@@ -141,8 +155,6 @@ struct BssData {
 
 static void init_sys_vm_map(const struct ElfHeader* elf_hdr, uint32_t* pg_tbl, struct BssData* bss_data);
 
-static void print_mem_dump(int32_t* mem, size_t len);
-
 void* init_vm(struct ElfHeader* elf_hdr, struct BssData* bss_data) {
 	// VM page directory base address starts at 4kb
 	uint32_t* pd_base = (uint32_t*)(0x1 << 12);
@@ -168,30 +180,16 @@ void* init_vm(struct ElfHeader* elf_hdr, struct BssData* bss_data) {
 		pt[i] = pt_entry | 0x3;
 	}
 
-	// mapping BIOS data area at the 0x30000
-	size_t bios_data_area_pg_idx = 0x30000 >> 12;
+	// making first 4k of conventional memory accessible for system image
+	size_t bios_data_area_pg_idx = MEM_ORIGIN_VIRT_ADDR >> 12;
 	pt[bios_data_area_pg_idx] = 0x3;
 
 	init_sys_vm_map(elf_hdr, pt, bss_data);
 
 	set_cr3(pd_base);
 
-	print_mem_dump((int32_t*)0x1b2b0, 8);
-
 	// TODO drop return value and pass a struct instead which will contain ( entry point address, bss section virtual address & virtual section size )
 	return (void*)elf_hdr->e_entry;
-}
-
-void print_mem_dump(int32_t* mem, size_t len) {
-	print("\n");
-	for (size_t i = 0; i < len; i++) {
-		char hex_buf[] = "0x00000000";
-
-		int2hex(mem[i], &hex_buf[2]);
-		print(hex_buf);
-		print(" ");
-	}
-	print("\n");
 }
 
 static void init_sys_vm_map(const struct ElfHeader* elf_hdr, uint32_t* pg_tbl, struct BssData* bss_data) {

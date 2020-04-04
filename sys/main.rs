@@ -9,6 +9,7 @@ use core::usize;
 
 use core::ptr;
 use core::sync::atomic::{ AtomicBool, Ordering };
+use core::str;
 
 use uos::console;
 use uos::task;
@@ -27,6 +28,8 @@ const CMOS_RAM_DATA_PORT_NUM: u32 = 0x71;
 
 const KBD_DATA_IOPORT_NUM: u32 = 0x60;
 const KEY_RELEASED_BIT_MASK: u32 = 0x80;
+
+const PS_CMD: &'static str = "ps";
 
 // required for modifier key release case handling
 // const KEY_SCAN_CODE_MASK: u32 = !KEY_RELEASED_BIT_MASK;
@@ -74,6 +77,8 @@ unsafe fn init() {
 
 	task::create(idle_thread);
 
+	console_println!("ps command: '{}'", PS_CMD);
+
 	let mut cmd_buf: vec::Vec<u8> = vec::Vec::with_cap(64);
 	loop {
 		console::print_str("> ");
@@ -81,9 +86,11 @@ unsafe fn init() {
 		cmd_buf.clear();
 		console::read_line(&mut cmd_buf);
 
-		// fix system image placement in memory, will be able to use string conversion functions
-		// let cmd = str::from_utf8(&cmd_buf).unwrap();
-		if cmd_buf.len() == 2 && cmd_buf[0] == b'p' && cmd_buf[1] == b's' {
+		let cmd = str::from_utf8(&cmd_buf).unwrap();
+
+		console_println!("command: '{}'", cmd);
+
+		if cmd == PS_CMD {
 			console_println!("print task list");
 		} else {
 			console_println!("false");

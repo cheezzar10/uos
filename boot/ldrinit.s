@@ -40,6 +40,9 @@ data_code_seg:
 # base high byte
 .byte 0
 
+.equ SYS_IMAGE_ADDR, 0x10000
+.equ SYS_STACK_TOP, 0x30000 - 4
+
 .section .text
 
 # stack and data segment selection
@@ -62,7 +65,7 @@ pushl %esp
 
 # passing physical address of system binary to VM init
 # for correct ELF header parsing
-pushl $0x10000
+pushl $SYS_IMAGE_ADDR
 
 call init_vm
 
@@ -83,7 +86,7 @@ orl $0x80000000, %eax
 movl %eax, %cr0
 
 # configuring large stack for system code
-movl $0x1fffc, %esp
+movl $SYS_STACK_TOP, %esp
 
 # configuring on stack BssInfo { addr, size } struct representation
 pushl %ecx

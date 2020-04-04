@@ -16,7 +16,7 @@ static mut SCR_WRITER: ScreenWriter = ScreenWriter { pos: 0 };
 
 const SCREEN_COLS: usize = 80;
 // re-mappped BIOS data area location
-const BIOS_DATA_AREA_ADDR: usize = 0x30400;
+const BIOS_DATA_AREA_ADDR: usize = 0x40400;
 
 const VIDEO_PAGE_0_CURSOR_POS_ADDR: usize = BIOS_DATA_AREA_ADDR + 80;
 

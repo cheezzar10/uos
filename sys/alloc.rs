@@ -4,7 +4,7 @@ use core::mem;
 use crate::lock;
 
 // for a start, 64k
-static GLOBAL_ALLOC: lock::Mutex<Allocator> = lock::Mutex::new(Allocator::new(0x20000 as *mut u8, 0x10000));
+static GLOBAL_ALLOC: lock::Mutex<Allocator> = lock::Mutex::new(Allocator::new(0x30000 as *mut u8, 0x10000));
 
 pub fn alloc(size: usize) -> *mut u8 {
 	unsafe {
