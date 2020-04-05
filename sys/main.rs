@@ -29,8 +29,6 @@ const CMOS_RAM_DATA_PORT_NUM: u32 = 0x71;
 const KBD_DATA_IOPORT_NUM: u32 = 0x60;
 const KEY_RELEASED_BIT_MASK: u32 = 0x80;
 
-const PS_CMD: &'static str = "ps";
-
 // required for modifier key release case handling
 // const KEY_SCAN_CODE_MASK: u32 = !KEY_RELEASED_BIT_MASK;
 
@@ -77,8 +75,6 @@ unsafe fn init() {
 
 	task::create(idle_thread);
 
-	console_println!("ps command: '{}'", PS_CMD);
-
 	let mut cmd_buf: vec::Vec<u8> = vec::Vec::with_cap(64);
 	loop {
 		console::print_str("> ");
@@ -87,14 +83,42 @@ unsafe fn init() {
 		console::read_line(&mut cmd_buf);
 
 		let cmd = str::from_utf8(&cmd_buf).unwrap();
-
-		console_println!("command: '{}'", cmd);
-
-		if cmd == PS_CMD {
+		if strcmp(cmd, "ps") == 0 {
 			console_println!("print task list");
 		} else {
-			console_println!("false");
+			console_println!("unknown command: '{}'", cmd);
 		}
+	}
+}
+
+// TODO move to string module
+fn strcmp(s1: &str, s2: &str) -> i32 {
+	let s1b = s1.as_bytes();
+	let s2b = s2.as_bytes();
+
+	if s1b.len() < s2b.len() {
+		return -1
+	} else if s1b.len() > s2b.len() {
+		return 1
+	}
+
+	let s_len = s1b.len();
+
+	let mut i: usize = 0;
+	while s1b[i] == s2b[i] {
+		if i + 1 == s_len {
+			break;
+		}
+
+		i += 1;
+	}
+
+	if s1b[i] == s2b[i] {
+		0
+	} else if s1b[i] < s2b[i] {
+		-1
+	} else {
+		1
 	}
 }
 
