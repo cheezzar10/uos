@@ -21,3 +21,5 @@ pub mod ring;
 pub mod pio;
 
 pub mod intr;
+
+pub mod string;
